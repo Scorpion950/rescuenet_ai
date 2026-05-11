@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { db } from "../firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 function Report() {
 
@@ -18,20 +20,31 @@ function Report() {
     };
 
     // Handle form submit
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        console.log("Submitted Report:", formData);
+        try {
 
-        alert("Incident Report Submitted!");
+            await addDoc(collection(db, "reports"), {
+                ...formData,
+                createdAt: new Date(),
+            });
 
-        // Clear form
-        setFormData({
-            type: "",
-            location: "",
-            severity: "",
-            description: "",
-        });
+            alert("Incident Report Submitted!");
+
+            setFormData({
+                type: "",
+                location: "",
+                severity: "",
+                description: "",
+            });
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("Failed to submit report");
+        }
     };
 
     return (

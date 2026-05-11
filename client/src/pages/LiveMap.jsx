@@ -1,24 +1,58 @@
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect, useState } from "react";
+
+import {
+    MapContainer,
+    TileLayer,
+    Marker,
+    Popup,
+} from "react-leaflet";
+
+import {
+    collection,
+    getDocs,
+} from "firebase/firestore";
+
+import { db } from "../firebase";
 
 function LiveMap() {
 
-    // Sample disaster reports
-    const reports = [
-        {
-            id: 1,
-            type: "Flood",
-            location: "Pune",
-            severity: "High",
-            coordinates: [18.5204, 73.8567],
-        },
-        {
-            id: 2,
-            type: "Fire",
-            location: "Mumbai",
-            severity: "Critical",
-            coordinates: [19.0760, 72.8777],
-        },
-    ];
+    const [reports, setReports] = useState([]);
+
+    // Fetch reports from Firebase
+    useEffect(() => {
+
+        const fetchReports = async () => {
+
+            try {
+
+                const querySnapshot = await getDocs(
+                    collection(db, "reports")
+                );
+
+                const fetchedReports = [];
+
+                querySnapshot.forEach((doc) => {
+
+                    fetchedReports.push({
+                        id: doc.id,
+                        ...doc.data(),
+                    });
+
+                });
+
+                setReports(fetchedReports);
+
+            } catch (error) {
+
+                console.error(error);
+
+            }
+
+        };
+
+        fetchReports();
+
+    }, []);
 
     return (
         <div className="p-6">
@@ -29,23 +63,31 @@ function LiveMap() {
 
             <MapContainer
                 center={[18.5204, 73.8567]}
-                zoom={6}
-                style={{ height: "80vh", width: "100%" }}
+                zoom={5}
+                style={{
+                    height: "80vh",
+                    width: "100%",
+                }}
             >
 
-                {/* Map Tiles */}
                 <TileLayer
                     attribution='&copy; OpenStreetMap contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {/* Disaster Markers */}
-                {reports.map((report) => (
+                {/* Temporary Random Coordinates */}
+                {reports.map((report, index) => (
+
                     <Marker
                         key={report.id}
-                        position={report.coordinates}
+                        position={[
+                            18.5204 + (index * 0.5),
+                            73.8567 + (index * 0.5),
+                        ]}
                     >
+
                         <Popup>
+
                             <div>
 
                                 <h2 className="font-bold text-lg">
@@ -60,9 +102,16 @@ function LiveMap() {
                                     Severity: {report.severity}
                                 </p>
 
+                                <p>
+                                    {report.description}
+                                </p>
+
                             </div>
+
                         </Popup>
+
                     </Marker>
+
                 ))}
 
             </MapContainer>
