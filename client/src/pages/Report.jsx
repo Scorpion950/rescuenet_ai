@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { classifyEmergency } from "../utils/ai";
 
 function Report() {
 
@@ -25,13 +26,21 @@ function Report() {
 
         try {
 
+            // AI classification
+            const aiSeverity = await classifyEmergency(
+                formData.description
+            );
+
+            // Store in Firebase
             await addDoc(collection(db, "reports"), {
                 ...formData,
+                severity: aiSeverity,
                 createdAt: new Date(),
             });
 
-            alert("Incident Report Submitted!");
+            alert(`Incident Report Submitted! AI Severity: ${aiSeverity}`);
 
+            // Reset form
             setFormData({
                 type: "",
                 location: "",
@@ -96,7 +105,7 @@ function Report() {
                         />
                     </div>
 
-                    {/* Severity */}
+                    {/* Severity
                     <div>
                         <label className="block mb-2">
                             Severity
@@ -115,7 +124,7 @@ function Report() {
                             <option value="High">High</option>
                             <option value="Critical">Critical</option>
                         </select>
-                    </div>
+                    </div> */}
 
                     {/* Description */}
                     <div>
