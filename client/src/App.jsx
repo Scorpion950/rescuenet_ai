@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Report from "./pages/Report";
 import LiveMap from "./pages/LiveMap";
 import Admin from "./pages/Admin";
+import SOS from "./pages/SOS";
 
 function App() {
   return (
@@ -19,6 +20,10 @@ function App() {
           </h1>
 
           <div className="space-x-6">
+
+            <Link to="/sos" className="hover:text-red-400">
+              SOS
+            </Link>
 
             <Link to="/" className="hover:text-red-400">
               Home
@@ -41,6 +46,8 @@ function App() {
 
         {/* Routes */}
         <Routes>
+
+          <Route path="/sos" element={<SOS />} />
 
           <Route path="/" element={<Home />} />
 

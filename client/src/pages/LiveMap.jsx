@@ -9,7 +9,7 @@ import {
 
 import {
     collection,
-    getDocs,
+    onSnapshot,
 } from "firebase/firestore";
 
 import { db } from "../firebase";
@@ -21,17 +21,13 @@ function LiveMap() {
     // Fetch reports from Firebase
     useEffect(() => {
 
-        const fetchReports = async () => {
-
-            try {
-
-                const querySnapshot = await getDocs(
-                    collection(db, "reports")
-                );
+        const unsubscribe = onSnapshot(
+            collection(db, "reports"),
+            (snapshot) => {
 
                 const fetchedReports = [];
 
-                querySnapshot.forEach((doc) => {
+                snapshot.forEach((doc) => {
 
                     fetchedReports.push({
                         id: doc.id,
@@ -42,15 +38,10 @@ function LiveMap() {
 
                 setReports(fetchedReports);
 
-            } catch (error) {
-
-                console.error(error);
-
             }
+        );
 
-        };
-
-        fetchReports();
+        return () => unsubscribe();
 
     }, []);
 
@@ -81,30 +72,46 @@ function LiveMap() {
                     <Marker
                         key={report.id}
                         position={[
-                            18.5204 + (index * 0.5),
-                            73.8567 + (index * 0.5),
+                            report.latitude || 18.5204,
+                            report.longitude || 73.8567,
                         ]}
                     >
 
                         <Popup>
 
-                            <div>
+                            <div className="w-64">
 
-                                <h2 className="font-bold text-lg">
+                                <h2 className="font-bold text-lg mb-2">
                                     {report.type}
                                 </h2>
 
                                 <p>
-                                    Location: {report.location}
+                                    <span className="font-bold">
+                                        Location:
+                                    </span>{" "}
+                                    {report.location}
                                 </p>
 
                                 <p>
-                                    Severity: {report.severity}
+                                    <span className="font-bold">
+                                        Severity:
+                                    </span>{" "}
+                                    {report.severity}
                                 </p>
 
-                                <p>
+                                <p className="mt-2">
                                     {report.description}
                                 </p>
+
+                                {report.imageUrl && (
+
+                                    <img
+                                        src={report.imageUrl}
+                                        alt="Disaster"
+                                        className="mt-4 rounded-xl w-full h-40 object-cover"
+                                    />
+
+                                )}
 
                             </div>
 

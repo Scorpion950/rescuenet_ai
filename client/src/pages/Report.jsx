@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
 import { classifyEmergency } from "../utils/ai";
+
+
+
 
 function Report() {
 
@@ -10,7 +13,34 @@ function Report() {
         location: "",
         severity: "",
         description: "",
+        image: null,
+        latitude: "",
+        longitude: "",
     });
+
+    useEffect(() => {
+
+        navigator.geolocation.getCurrentPosition(
+
+            (position) => {
+
+                setFormData((prev) => ({
+                    ...prev,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                }));
+
+            },
+
+            (error) => {
+
+                console.error(error);
+
+            }
+
+        );
+
+    }, []);
 
     // Handle input changes
     const handleChange = (e) => {
@@ -31,10 +61,46 @@ function Report() {
                 formData.description
             );
 
+            // Upload image to Cloudinary
+            let imageUrl = "";
+
+            if (formData.image) {
+
+                const imageData = new FormData();
+
+                imageData.append(
+                    "file",
+                    formData.image
+                );
+
+                imageData.append(
+                    "upload_preset",
+                    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+                );
+
+                const response = await fetch(
+                    `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+                    {
+                        method: "POST",
+                        body: imageData,
+                    }
+                );
+
+                const data = await response.json();
+
+                imageUrl = data.secure_url;
+
+            }
+
             // Store in Firebase
             await addDoc(collection(db, "reports"), {
-                ...formData,
+                type: formData.type,
+                location: formData.location,
+                description: formData.description,
                 severity: aiSeverity,
+                imageUrl,
+                latitude: formData.latitude,
+                longitude: formData.longitude,
                 createdAt: new Date(),
             });
 
@@ -46,6 +112,9 @@ function Report() {
                 location: "",
                 severity: "",
                 description: "",
+                image: null,
+                latitude: formData.latitude,
+                longitude: formData.longitude,
             });
 
         } catch (error) {
@@ -105,27 +174,6 @@ function Report() {
                         />
                     </div>
 
-                    {/* Severity
-                    <div>
-                        <label className="block mb-2">
-                            Severity
-                        </label>
-
-                        <select
-                            name="severity"
-                            value={formData.severity}
-                            onChange={handleChange}
-                            className="w-full p-3 rounded-xl bg-slate-700 text-white"
-                            required
-                        >
-                            <option value="">Select Severity</option>
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                            <option value="Critical">Critical</option>
-                        </select>
-                    </div> */}
-
                     {/* Description */}
                     <div>
                         <label className="block mb-2">
@@ -141,6 +189,27 @@ function Report() {
                             className="w-full p-3 rounded-xl bg-slate-700 text-white"
                             required
                         />
+                    </div>
+
+                    {/* Image Upload */}
+                    <div>
+
+                        <label className="block mb-2">
+                            Upload Disaster Image
+                        </label>
+
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    image: e.target.files[0],
+                                })
+                            }
+                            className="w-full p-3 rounded-xl bg-slate-700 text-white"
+                        />
+
                     </div>
 
                     {/* Submit Button */}
