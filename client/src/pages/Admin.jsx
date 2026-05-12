@@ -189,15 +189,60 @@ function Admin() {
                             Delete Report
                         </button>
 
-                        {report.imageUrl && (
+                        {/* Media Gallery */}
+                        {report.mediaUrls &&
+                            report.mediaUrls.length > 0 && (
 
-                            <img
-                                src={report.imageUrl}
-                                alt="Disaster"
-                                className="mt-4 rounded-xl w-full max-h-80 object-cover"
-                            />
+                                <div className="mt-4 space-y-3">
 
-                        )}
+                                    {report.mediaUrls.map(
+                                        (media, index) => (
+
+                                            media.includes(
+                                                ".mp4"
+                                            ) ||
+
+                                                media.includes(
+                                                    ".webm"
+                                                ) ||
+
+                                                media.includes(
+                                                    ".mov"
+                                                )
+
+                                                ? (
+
+                                                    <video
+                                                        key={index}
+                                                        controls
+                                                        className="rounded-xl w-full h-48 object-cover"
+                                                    >
+
+                                                        <source
+                                                            src={media}
+                                                        />
+
+                                                    </video>
+
+                                                )
+
+                                                : (
+
+                                                    <img
+                                                        key={index}
+                                                        src={media}
+                                                        alt="Disaster"
+                                                        className="rounded-xl w-full h-48 object-cover"
+                                                    />
+
+                                                )
+
+                                        )
+                                    )}
+
+                                </div>
+
+                            )}
 
                     </div>
 

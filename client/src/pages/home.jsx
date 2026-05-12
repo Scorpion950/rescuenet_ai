@@ -1,63 +1,13 @@
-import React, {
-    useEffect,
-    useState,
-} from "react";
+import AlertCard from
+    "../components/AlertCard";
+
+import useNearbyAlerts from
+    "../hooks/useNearbyAlerts";
 
 function Home() {
 
-    const [nearbyAlerts, setNearbyAlerts] =
-        useState([]);
-
-    useEffect(() => {
-
-        navigator.geolocation.watchPosition(
-
-            async (position) => {
-
-                try {
-
-                    const response = await fetch(
-                        "http://localhost:5000/nearby-incidents",
-                        {
-
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify({
-
-                                latitude:
-                                    position.coords.latitude,
-
-                                longitude:
-                                    position.coords.longitude,
-
-                            }),
-
-                        }
-                    );
-
-                    const data =
-                        await response.json();
-
-                    setNearbyAlerts(
-                        data.incidents || []
-                    );
-
-                } catch (error) {
-
-                    console.error(error);
-
-                }
-
-            }
-
-        );
-
-    }, []);
+    const nearbyAlerts =
+        useNearbyAlerts();
 
     return (
 
@@ -76,32 +26,16 @@ function Home() {
 
                         {nearbyAlerts.map((alert) => (
 
-                            <div
+                            <AlertCard
+
                                 key={alert.id}
-                                className="bg-red-800 p-4 rounded-xl"
-                            >
 
-                                <h3 className="font-bold text-lg">
-                                    {alert.type}
-                                </h3>
+                                type={alert.type}
+                                severity={alert.severity}
+                                location={alert.location}
+                                status={alert.status}
 
-                                <p>
-                                    {alert.location}
-                                </p>
-
-                                <p>
-                                    Severity:
-                                    {" "}
-                                    {alert.severity}
-                                </p>
-
-                                <p>
-                                    Distance:
-                                    {" "}
-                                    {alert.distance} KM
-                                </p>
-
-                            </div>
+                            />
 
                         ))}
 
@@ -119,7 +53,9 @@ function Home() {
                 </h1>
 
                 <p className="text-xl text-gray-300 max-w-2xl mb-8">
-                    Report emergencies, view live danger zones, and help responders act faster during critical situations.
+                    Report emergencies, view live danger zones,
+                    and help responders act faster during
+                    critical situations.
                 </p>
 
                 <div className="space-x-4">
@@ -139,6 +75,7 @@ function Home() {
         </div>
 
     );
+
 }
 
 export default Home;

@@ -1,8 +1,20 @@
+import {
+    useState,
+} from "react";
+
+import {
+    sendSOSRequest,
+} from "../services/sosService";
 function SOS() {
+
+    const [loading, setLoading] =
+        useState(false);
 
     const sendSOS = async (service) => {
 
         try {
+
+            setLoading(true);
 
             // Get user location
             navigator.geolocation.getCurrentPosition(
@@ -16,35 +28,21 @@ function SOS() {
                         position.coords.longitude;
 
                     // Send SOS to backend
-                    const response = await fetch(
-                        "http://localhost:5000/send-sos",
-                        {
-
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-                            },
-
-                            body: JSON.stringify({
-
-                                service,
-                                latitude,
-                                longitude,
-
-                            }),
-
-                        }
-                    );
-
                     const data =
-                        await response.json();
+                        await sendSOSRequest(
 
-                    // Error from backend
-                    if (!response.ok) {
+                            service,
+                            latitude,
+                            longitude
+
+                        );
+
+                    // Error
+                    if (data.error) {
 
                         alert(data.error);
+
+                        setLoading(false);
 
                         return;
 
@@ -53,6 +51,28 @@ function SOS() {
                     // Success
                     alert(data.message);
 
+                    setLoading(false);
+
+                },
+
+                // Location Error
+                (error) => {
+
+                    console.error(error);
+
+                    setLoading(false);
+
+                    alert(
+                        "Location access failed"
+                    );
+
+                },
+
+                // Faster Location Options
+                {
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 60000,
                 }
 
             );
@@ -60,6 +80,8 @@ function SOS() {
         } catch (error) {
 
             console.error(error);
+
+            setLoading(false);
 
             alert("Failed to send SOS");
 
@@ -79,23 +101,44 @@ function SOS() {
 
                 <button
                     onClick={() => sendSOS("Ambulance")}
-                    className="bg-red-600 hover:bg-red-700 px-10 py-5 rounded-2xl text-2xl font-bold"
+                    disabled={loading}
+                    className="bg-red-600 hover:bg-red-700 px-10 py-5 rounded-2xl text-2xl font-bold disabled:opacity-50"
                 >
-                    🚑 Ambulance
+
+                    {
+                        loading
+                            ? "Sending..."
+                            : "🚑 Ambulance"
+                    }
+
                 </button>
 
                 <button
                     onClick={() => sendSOS("Fire Brigade")}
-                    className="bg-orange-600 hover:bg-orange-700 px-10 py-5 rounded-2xl text-2xl font-bold"
+                    disabled={loading}
+                    className="bg-orange-600 hover:bg-orange-700 px-10 py-5 rounded-2xl text-2xl font-bold disabled:opacity-50"
                 >
-                    🚒 Fire Brigade
+
+                    {
+                        loading
+                            ? "Sending..."
+                            : "🚒 Fire Brigade"
+                    }
+
                 </button>
 
                 <button
                     onClick={() => sendSOS("Police")}
-                    className="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-2xl text-2xl font-bold"
+                    disabled={loading}
+                    className="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-2xl text-2xl font-bold disabled:opacity-50"
                 >
-                    🚓 Police
+
+                    {
+                        loading
+                            ? "Sending..."
+                            : "🚓 Police"
+                    }
+
                 </button>
 
             </div>
