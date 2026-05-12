@@ -1,3 +1,20 @@
+const rateLimit =
+    require("express-rate-limit");
+
+// Rate Limiter
+const limiter = rateLimit({
+
+    windowMs:
+        1 * 60 * 1000,
+
+    max: 20,
+
+    message:
+
+        "Too many requests. Please try again later.",
+
+});
+
 require("dotenv").config();
 
 const express = require("express");
@@ -45,6 +62,8 @@ const db = require(
 
 app.use(cors());
 app.use(express.json());
+
+app.use(limiter);
 
 app.use("/", sosRoutes);
 

@@ -115,6 +115,16 @@ function LiveMap() {
                 Live Disaster Map
             </h1>
 
+            {reports.length === 0 && (
+
+                <div className="bg-slate-800 p-5 rounded-2xl text-center mb-6 text-gray-300">
+
+                    No active incidents found right now.
+
+                </div>
+
+            )}
+
             <MapContainer
                 center={[18.5204, 73.8567]}
                 zoom={5}
