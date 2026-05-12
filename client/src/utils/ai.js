@@ -1,40 +1,35 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(
-    import.meta.env.VITE_GEMINI_API_KEY
-);
-
-export const classifyEmergency = async (description) => {
+export const classifyEmergency = async (
+    description
+) => {
 
     try {
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-latest",
-        });
+        const response = await fetch(
+            "http://localhost:5000/analyze-report",
+            {
+                method: "POST",
 
-        const prompt = `
-    Classify this emergency into one category only:
-    LOW
-    MEDIUM
-    HIGH
-    CRITICAL
+                headers: {
+                    "Content-Type": "application/json",
+                },
 
-    Emergency:
-    ${description}
+                body: JSON.stringify({
+                    description,
+                }),
 
-    Return ONLY the category name.
-    `;
+            }
+        );
 
-        const result = await model.generateContent(prompt);
+        const data = await response.json();
 
-        const response = await result.response;
-
-        return response.text().trim();
+        return data.severity;
 
     } catch (error) {
 
         console.error(error);
 
-        return "UNKNOWN";
+        return "PENDING";
+
     }
+
 };

@@ -1,20 +1,61 @@
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "../firebase";
-
 function SOS() {
 
     const sendSOS = async (service) => {
 
         try {
 
-            await addDoc(collection(db, "sosAlerts"), {
+            // Get user location
+            navigator.geolocation.getCurrentPosition(
 
-                service,
-                createdAt: new Date(),
+                async (position) => {
 
-            });
+                    const latitude =
+                        position.coords.latitude;
 
-            alert(`${service} Alert Sent Successfully!`);
+                    const longitude =
+                        position.coords.longitude;
+
+                    // Send SOS to backend
+                    const response = await fetch(
+                        "http://localhost:5000/send-sos",
+                        {
+
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            body: JSON.stringify({
+
+                                service,
+                                latitude,
+                                longitude,
+
+                            }),
+
+                        }
+                    );
+
+                    const data =
+                        await response.json();
+
+                    // Error from backend
+                    if (!response.ok) {
+
+                        alert(data.error);
+
+                        return;
+
+                    }
+
+                    // Success
+                    alert(data.message);
+
+                }
+
+            );
 
         } catch (error) {
 
@@ -27,6 +68,7 @@ function SOS() {
     };
 
     return (
+
         <div className="min-h-screen flex flex-col justify-center items-center gap-8">
 
             <h1 className="text-5xl font-bold text-red-500">
@@ -59,7 +101,9 @@ function SOS() {
             </div>
 
         </div>
+
     );
+
 }
 
 export default SOS;

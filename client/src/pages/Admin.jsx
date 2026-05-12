@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import {
     collection,
     onSnapshot,
+    deleteDoc,
+    doc,
 } from "firebase/firestore";
 
 import { db } from "../firebase";
@@ -11,6 +13,42 @@ function Admin() {
 
     const [reports, setReports] = useState([]);
     const [sosAlerts, setSosAlerts] = useState([]);
+
+    const deleteReport = async (id) => {
+
+        try {
+
+            await deleteDoc(doc(db, "reports", id));
+
+            alert("Report deleted successfully");
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("Failed to delete report");
+
+        }
+
+    };
+
+    const deleteSOS = async (id) => {
+
+        try {
+
+            await deleteDoc(doc(db, "sosAlerts", id));
+
+            alert("SOS alert deleted successfully");
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("Failed to delete SOS alert");
+
+        }
+
+    };
 
     // Realtime Reports
     useEffect(() => {
@@ -95,6 +133,13 @@ function Admin() {
                             Emergency assistance requested
                         </p>
 
+                        <button
+                            onClick={() => deleteSOS(alert.id)}
+                            className="mt-4 bg-black hover:bg-gray-900 px-4 py-2 rounded-xl font-bold"
+                        >
+                            Delete SOS
+                        </button>
+
                     </div>
 
                 ))}
@@ -136,6 +181,13 @@ function Admin() {
                         <p className="mt-2 text-gray-300">
                             {report.description}
                         </p>
+
+                        <button
+                            onClick={() => deleteReport(report.id)}
+                            className="mt-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl font-bold"
+                        >
+                            Delete Report
+                        </button>
 
                         {report.imageUrl && (
 

@@ -101,6 +101,13 @@ function Report() {
                 imageUrl,
                 latitude: formData.latitude,
                 longitude: formData.longitude,
+
+                // Verification System
+                verifiedYes: 0,
+                verifiedNo: 0,
+                verifiedUnsure: 0,
+                status: "PENDING",
+
                 createdAt: new Date(),
             });
 
