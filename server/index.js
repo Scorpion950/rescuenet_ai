@@ -1,93 +1,124 @@
+require("dotenv").config();
+
+const express =
+    require("express");
+
+const cors =
+    require("cors");
+
+const cron =
+    require("node-cron");
+
 const rateLimit =
     require("express-rate-limit");
 
-// Rate Limiter
-const limiter = rateLimit({
+const {
+    GoogleGenerativeAI,
+} = require("@google/generative-ai");
 
-    windowMs:
-        1 * 60 * 1000,
+/* ROUTES */
+const responderRoutes =
+    require("./routes/responderRoutes");
 
-    max: 20,
+const statusRoutes =
+    require("./routes/statusRoutes");
 
-    message:
-
-        "Too many requests. Please try again later.",
-
-});
-
-require("dotenv").config();
-
-const express = require("express");
-const cron = require("node-cron");
-const calculateDistance = require(
-    "./utils/distanceCalculator"
-);
-
-const sosRoutes = require(
-    "./routes/sosRoutes"
-);
+const sosRoutes =
+    require("./routes/sosRoutes");
 
 const verificationRoutes =
-    require(
-        "./routes/verificationRoutes"
-    );
+    require("./routes/verificationRoutes");
 
 const incidentRoutes =
-    require(
-        "./routes/incidentRoutes"
-    );
+    require("./routes/incidentRoutes");
 
-const aiRoutes = require(
-    "./routes/aiRoutes"
-);
+const aiRoutes =
+    require("./routes/aiRoutes");
 
+/* JOBS */
 const {
     startAutoResolveJob,
 } = require(
     "./jobs/autoResolveJob"
 );
 
-const cors = require("cors");
-require("dotenv").config();
+/* FIREBASE INIT */
+require("./config/firebase");
 
-const {
-    GoogleGenerativeAI,
-} = require("@google/generative-ai");
-
+/* EXPRESS APP */
 const app = express();
 
-const db = require(
-    "./config/firebaseAdmin"
-);
-
+/* MIDDLEWARE */
 app.use(cors());
+
 app.use(express.json());
+
+/* RATE LIMITER */
+const limiter = rateLimit({
+
+    windowMs:
+        1 * 60 * 1000,
+
+    max: 200,
+
+    message:
+        "Too many requests. Please try again later.",
+
+});
 
 app.use(limiter);
 
-app.use("/", sosRoutes);
-
-app.use("/", verificationRoutes);
-
-app.use("/", incidentRoutes);
-
-app.use("/", aiRoutes);
-
-startAutoResolveJob();
-
-// Gemini Setup
-const genAI = new GoogleGenerativeAI(
-    process.env.GEMINI_API_KEY
+/* ROUTES */
+app.use(
+    "/",
+    responderRoutes
 );
 
+app.use(
+    "/",
+    statusRoutes
+);
 
-// Server Start
+app.use(
+    "/",
+    sosRoutes
+);
+
+app.use(
+    "/",
+    verificationRoutes
+);
+
+app.use(
+    "/",
+    incidentRoutes
+);
+
+app.use(
+    "/",
+    aiRoutes
+);
+
+/* START BACKGROUND JOBS */
+startAutoResolveJob();
+
+/* GEMINI AI */
+const genAI =
+    new GoogleGenerativeAI(
+
+        process.env.GEMINI_API_KEY
+
+    );
+
+/* SERVER START */
 const PORT = 5000;
 
 app.listen(PORT, () => {
 
     console.log(
+
         `Server running on port ${PORT}`
+
     );
 
 });

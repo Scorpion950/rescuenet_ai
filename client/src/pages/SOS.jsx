@@ -11,9 +11,70 @@ function SOS() {
     const [loading, setLoading] =
         useState(false);
 
+    const [
+
+        selectedServices,
+
+        setSelectedServices,
+
+    ] = useState([]);
+
+    const handleServiceChange = (e) => {
+
+        const service =
+            e.target.value;
+
+        // Checkbox selected
+        if (e.target.checked) {
+
+            setSelectedServices([
+
+                ...selectedServices,
+
+                service,
+
+            ]);
+
+        }
+
+        // Checkbox removed
+        else {
+
+            setSelectedServices(
+
+                selectedServices.filter(
+
+                    (item) =>
+                        item !== service
+
+                )
+
+            );
+
+        }
+
+    };
+
     const sendSOS = async (service) => {
 
         try {
+
+            // Validation
+            if (
+
+                selectedServices.length === 0
+
+            ) {
+
+                alert(
+
+                    "Please select at least one emergency service."
+
+                );
+
+                return;
+
+            }
 
             setLoading(true);
 
@@ -28,13 +89,48 @@ function SOS() {
                     const longitude =
                         position.coords.longitude;
 
+                    // Reverse Geocoding
+                    const geoResponse =
+                        await fetch(
+
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+
+                        );
+
+                    const geoData =
+                        await geoResponse.json();
+
+                    const address =
+                        geoData.address || {};
+
+                    const location =
+
+                        address.suburb ||
+
+                        address.neighbourhood ||
+
+                        address.city ||
+
+                        address.town ||
+
+                        address.village ||
+
+                        address.county ||
+
+                        address.state_district ||
+
+                        address.state ||
+
+                        "Unknown Area";
+
                     // Send SOS to backend
                     const data =
                         await sendSOSRequest(
 
-                            service,
+                            selectedServices,
                             latitude,
-                            longitude
+                            longitude,
+                            location
 
                         );
 
@@ -51,6 +147,9 @@ function SOS() {
 
                     // Success
                     alert(data.message);
+
+                    // Reset selected services
+                    setSelectedServices([]);
 
                     setLoading(false);
 
@@ -98,46 +197,73 @@ function SOS() {
                 Emergency SOS
             </h1>
 
-            <div className="flex flex-wrap gap-6 justify-center">
+            <div className="bg-slate-800 p-8 rounded-2xl w-full max-w-md">
+
+                <h2 className="text-2xl font-bold mb-6 text-center">
+
+                    Select Emergency Services
+
+                </h2>
+
+                <div className="space-y-4">
+
+                    {/* Police */}
+                    <label className="flex items-center gap-3 text-lg">
+
+                        <input
+                            type="checkbox"
+                            value="Police"
+                            onChange={handleServiceChange}
+                        />
+
+                        🚓 Police
+
+                    </label>
+
+                    {/* Ambulance */}
+                    <label className="flex items-center gap-3 text-lg">
+
+                        <input
+                            type="checkbox"
+                            value="Ambulance"
+                            onChange={handleServiceChange}
+                        />
+
+                        🚑 Ambulance
+
+                    </label>
+
+                    {/* Fire Brigade */}
+                    <label className="flex items-center gap-3 text-lg">
+
+                        <input
+                            type="checkbox"
+                            value="Fire Brigade"
+                            onChange={handleServiceChange}
+                        />
+
+                        🚒 Fire Brigade
+
+                    </label>
+
+                </div>
 
                 <button
-                    onClick={() => sendSOS("Ambulance")}
+
+                    onClick={sendSOS}
+
                     disabled={loading}
-                    className="bg-red-600 hover:bg-red-700 px-10 py-5 rounded-2xl text-2xl font-bold disabled:opacity-50"
+
+                    className="w-full bg-red-600 hover:bg-red-700 p-4 rounded-xl text-xl font-bold mt-6"
+
                 >
 
                     {
+
                         loading
                             ? "Sending..."
-                            : "🚑 Ambulance"
-                    }
+                            : "Send Emergency SOS"
 
-                </button>
-
-                <button
-                    onClick={() => sendSOS("Fire Brigade")}
-                    disabled={loading}
-                    className="bg-orange-600 hover:bg-orange-700 px-10 py-5 rounded-2xl text-2xl font-bold disabled:opacity-50"
-                >
-
-                    {
-                        loading
-                            ? "Sending..."
-                            : "🚒 Fire Brigade"
-                    }
-
-                </button>
-
-                <button
-                    onClick={() => sendSOS("Police")}
-                    disabled={loading}
-                    className="bg-blue-600 hover:bg-blue-700 px-10 py-5 rounded-2xl text-2xl font-bold disabled:opacity-50"
-                >
-
-                    {
-                        loading
-                            ? "Sending..."
-                            : "🚓 Police"
                     }
 
                 </button>

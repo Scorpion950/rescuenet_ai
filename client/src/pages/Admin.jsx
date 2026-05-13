@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
+
+import LiveMap from "./LiveMap";
 
 import {
     collection,
@@ -11,40 +16,57 @@ import { db } from "../firebase";
 
 function Admin() {
 
-    const [reports, setReports] = useState([]);
-    const [sosAlerts, setSosAlerts] = useState([]);
+    const [reports, setReports] =
+        useState([]);
 
+    const [sosAlerts, setSosAlerts] =
+        useState([]);
+
+    // Delete Report
     const deleteReport = async (id) => {
 
         try {
 
-            await deleteDoc(doc(db, "reports", id));
+            await deleteDoc(
+                doc(db, "reports", id)
+            );
 
-            alert("Report deleted successfully");
+            alert(
+                "Report deleted successfully"
+            );
 
         } catch (error) {
 
             console.error(error);
 
-            alert("Failed to delete report");
+            alert(
+                "Failed to delete report"
+            );
 
         }
 
     };
 
+    // Delete SOS
     const deleteSOS = async (id) => {
 
         try {
 
-            await deleteDoc(doc(db, "sosAlerts", id));
+            await deleteDoc(
+                doc(db, "sosAlerts", id)
+            );
 
-            alert("SOS alert deleted successfully");
+            alert(
+                "SOS alert deleted successfully"
+            );
 
         } catch (error) {
 
             console.error(error);
 
-            alert("Failed to delete SOS alert");
+            alert(
+                "Failed to delete SOS alert"
+            );
 
         }
 
@@ -53,25 +75,37 @@ function Admin() {
     // Realtime Reports
     useEffect(() => {
 
-        const unsubscribe = onSnapshot(
-            collection(db, "reports"),
-            (snapshot) => {
+        const unsubscribe =
+            onSnapshot(
 
-                const fetchedReports = [];
+                collection(
+                    db,
+                    "reports"
+                ),
 
-                snapshot.forEach((doc) => {
+                (snapshot) => {
 
-                    fetchedReports.push({
-                        id: doc.id,
-                        ...doc.data(),
+                    const fetchedReports = [];
+
+                    snapshot.forEach((doc) => {
+
+                        fetchedReports.push({
+
+                            id: doc.id,
+
+                            ...doc.data(),
+
+                        });
+
                     });
 
-                });
+                    setReports(
+                        fetchedReports
+                    );
 
-                setReports(fetchedReports);
+                }
 
-            }
-        );
+            );
 
         return () => unsubscribe();
 
@@ -80,178 +114,417 @@ function Admin() {
     // Realtime SOS Alerts
     useEffect(() => {
 
-        const unsubscribe = onSnapshot(
-            collection(db, "sosAlerts"),
-            (snapshot) => {
+        const unsubscribe =
+            onSnapshot(
 
-                const fetchedAlerts = [];
+                collection(
+                    db,
+                    "sosAlerts"
+                ),
 
-                snapshot.forEach((doc) => {
+                (snapshot) => {
 
-                    fetchedAlerts.push({
-                        id: doc.id,
-                        ...doc.data(),
+                    const fetchedAlerts = [];
+
+                    snapshot.forEach((doc) => {
+
+                        fetchedAlerts.push({
+
+                            id: doc.id,
+
+                            ...doc.data(),
+
+                        });
+
                     });
 
-                });
+                    setSosAlerts(
+                        fetchedAlerts
+                    );
 
-                setSosAlerts(fetchedAlerts);
+                }
 
-            }
-        );
+            );
 
         return () => unsubscribe();
 
     }, []);
 
     return (
+
         <div className="p-6">
 
-            <h1 className="text-4xl font-bold mb-6">
+            {/* Admin Title */}
+            <h1 className="text-5xl font-bold mb-10">
+
                 Admin Dashboard
+
             </h1>
 
-            {/* SOS Alerts Section */}
-            <h2 className="text-3xl font-bold text-red-500 mb-4">
-                Live SOS Alerts
-            </h2>
+            {/* Live Map */}
+            <div className="mb-14">
 
-            <div className="grid gap-4 mb-10">
-
-                {sosAlerts.map((alert) => (
-
-                    <div
-                        key={alert.id}
-                        className="bg-red-700 p-5 rounded-2xl shadow-lg"
-                    >
-
-                        <h3 className="text-2xl font-bold">
-                            🚨 {alert.service}
-                        </h3>
-
-                        <p className="text-gray-200 mt-2">
-                            Emergency assistance requested
-                        </p>
-
-                        <button
-                            onClick={() => deleteSOS(alert.id)}
-                            className="mt-4 bg-black hover:bg-gray-900 px-4 py-2 rounded-xl font-bold"
-                        >
-                            Delete SOS
-                        </button>
-
-                    </div>
-
-                ))}
+                <LiveMap />
 
             </div>
 
-            {/* Reports Section */}
-            <h2 className="text-3xl font-bold text-blue-400 mb-4">
-                Disaster Reports
-            </h2>
+            {/* SOS SECTION */}
+            <div className="mb-14">
 
-            <div className="grid gap-6">
+                <h2 className="text-4xl font-bold text-red-500 mb-6">
 
-                {reports.map((report) => (
+                    Live SOS Alerts
 
-                    <div
-                        key={report.id}
-                        className="bg-slate-800 p-6 rounded-2xl shadow-lg"
-                    >
+                </h2>
 
-                        <h2 className="text-2xl font-bold text-red-400 mb-2">
-                            {report.type}
-                        </h2>
+                <div className="grid gap-6">
 
-                        <p>
-                            <span className="font-bold">
-                                Location:
-                            </span>{" "}
-                            {report.location}
-                        </p>
+                    {sosAlerts.length === 0 ? (
 
-                        <p>
-                            <span className="font-bold">
-                                Severity:
-                            </span>{" "}
-                            {report.severity}
-                        </p>
+                        <div className="bg-slate-800 p-6 rounded-2xl text-center text-gray-300">
 
-                        <p className="mt-2 text-gray-300">
-                            {report.description}
-                        </p>
+                            No active SOS alerts.
 
-                        <button
-                            onClick={() => deleteReport(report.id)}
-                            className="mt-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl font-bold"
-                        >
-                            Delete Report
-                        </button>
+                        </div>
 
-                        {/* Media Gallery */}
-                        {report.mediaUrls &&
-                            report.mediaUrls.length > 0 && (
+                    ) : (
 
-                                <div className="mt-4 space-y-3">
+                        sosAlerts.map((alert) => (
 
-                                    {report.mediaUrls.map(
-                                        (media, index) => (
+                            <div
 
-                                            media.includes(
-                                                ".mp4"
-                                            ) ||
+                                key={alert.id}
 
-                                                media.includes(
-                                                    ".webm"
-                                                ) ||
+                                className="bg-red-700 p-6 rounded-2xl shadow-lg"
 
-                                                media.includes(
-                                                    ".mov"
-                                                )
+                            >
 
-                                                ? (
+                                {/* Header */}
+                                <div className="flex items-center gap-3 mb-4">
 
-                                                    <video
-                                                        key={index}
-                                                        controls
-                                                        className="rounded-xl w-full h-48 object-cover"
-                                                    >
+                                    <span className="text-3xl">
 
-                                                        <source
-                                                            src={media}
-                                                        />
+                                        🚨
 
-                                                    </video>
+                                    </span>
 
-                                                )
+                                    <h2 className="text-2xl font-bold">
 
-                                                : (
+                                        Emergency SOS Alert
 
-                                                    <img
-                                                        key={index}
-                                                        src={media}
-                                                        alt="Disaster"
-                                                        className="rounded-xl w-full h-48 object-cover"
-                                                    />
-
-                                                )
-
-                                        )
-                                    )}
+                                    </h2>
 
                                 </div>
 
-                            )}
+                                {/* Requested Services */}
+                                <div className="mb-4">
 
-                    </div>
+                                    <p className="font-bold text-lg mb-2">
 
-                ))}
+                                        Requested Services:
+
+                                    </p>
+
+                                    <div className="flex flex-wrap gap-2">
+
+                                        {alert.services?.map((service) => (
+
+                                            <span
+
+                                                key={service}
+
+                                                className="bg-black px-3 py-1 rounded-xl"
+
+                                            >
+
+                                                {service}
+
+                                            </span>
+
+                                        ))}
+
+                                    </div>
+
+                                </div>
+
+                                {/* Location */}
+                                <div className="mb-4">
+
+                                    <p className="font-bold">
+
+                                        Location:
+
+                                    </p>
+
+                                    <p>
+
+                                        {alert.location || "Unknown Area"}
+
+                                    </p>
+
+                                </div>
+
+                                {/* Assigned Stations */}
+                                <div className="mb-4">
+
+                                    <p className="font-bold mb-2">
+
+                                        Assigned Stations:
+
+                                    </p>
+
+                                    <div className="space-y-2">
+
+                                        {alert.assignedStations?.map(
+
+                                            (station, index) => (
+
+                                                <div
+
+                                                    key={index}
+
+                                                    className="bg-black p-3 rounded-xl"
+
+                                                >
+
+                                                    <p className="font-semibold">
+
+                                                        {station.name}
+
+                                                    </p>
+
+                                                    <p className="text-sm text-gray-300">
+
+                                                        {station.type}
+
+                                                    </p>
+
+                                                    <p className="text-sm text-gray-300">
+
+                                                        {station.distance} KM away
+
+                                                    </p>
+
+                                                </div>
+
+                                            )
+
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                                {/* Timestamp */}
+                                <div className="mb-4">
+
+                                    <p className="font-bold">
+
+                                        Reported At:
+
+                                    </p>
+
+                                    <p>
+
+                                        {
+
+                                            alert.createdAt?.seconds
+
+                                                ? new Date(
+
+                                                    alert.createdAt.seconds * 1000
+
+                                                ).toLocaleString()
+
+                                                : "Unknown Time"
+
+                                        }
+
+                                    </p>
+
+                                </div>
+
+                                {/* Delete */}
+                                <button
+
+                                    onClick={() =>
+                                        deleteSOS(alert.id)
+                                    }
+
+                                    className="bg-black hover:bg-gray-900 px-5 py-2 rounded-xl font-bold"
+
+                                >
+
+                                    Delete SOS
+
+                                </button>
+
+                            </div>
+
+                        ))
+
+                    )}
+
+                </div>
+
+            </div>
+
+            {/* REPORTS SECTION */}
+            <div>
+
+                <h2 className="text-4xl font-bold text-blue-400 mb-6">
+
+                    Disaster Reports
+
+                </h2>
+
+                <div className="grid gap-6">
+
+                    {reports.length === 0 ? (
+
+                        <div className="bg-slate-800 p-6 rounded-2xl text-center text-gray-300">
+
+                            No disaster reports available.
+
+                        </div>
+
+                    ) : (
+
+                        reports.map((report) => (
+
+                            <div
+
+                                key={report.id}
+
+                                className="bg-slate-800 p-6 rounded-2xl shadow-lg"
+
+                            >
+
+                                <h2 className="text-2xl font-bold text-red-400 mb-3">
+
+                                    {report.type}
+
+                                </h2>
+
+                                <p>
+
+                                    <span className="font-bold">
+
+                                        Location:
+
+                                    </span>{" "}
+
+                                    {report.location}
+
+                                </p>
+
+                                <p>
+
+                                    <span className="font-bold">
+
+                                        Severity:
+
+                                    </span>{" "}
+
+                                    {report.severity}
+
+                                </p>
+
+                                <p className="mt-3 text-gray-300">
+
+                                    {report.description}
+
+                                </p>
+
+                                {/* Media */}
+                                {report.mediaUrls &&
+                                    report.mediaUrls.length > 0 && (
+
+                                        <div className="mt-4 space-y-3">
+
+                                            {report.mediaUrls.map(
+
+                                                (media, index) => (
+
+                                                    media.includes(".mp4") ||
+
+                                                        media.includes(".webm") ||
+
+                                                        media.includes(".mov")
+
+                                                        ? (
+
+                                                            <video
+
+                                                                key={index}
+
+                                                                controls
+
+                                                                className="rounded-xl w-full h-48 object-cover"
+
+                                                            >
+
+                                                                <source
+                                                                    src={media}
+                                                                />
+
+                                                            </video>
+
+                                                        )
+
+                                                        : (
+
+                                                            <img
+
+                                                                key={index}
+
+                                                                src={media}
+
+                                                                alt="Disaster"
+
+                                                                className="rounded-xl w-full h-48 object-cover"
+
+                                                            />
+
+                                                        )
+
+                                                )
+
+                                            )}
+
+                                        </div>
+
+                                    )}
+
+                                {/* Delete */}
+                                <button
+
+                                    onClick={() =>
+                                        deleteReport(report.id)
+                                    }
+
+                                    className="mt-5 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-xl font-bold"
+
+                                >
+
+                                    Delete Report
+
+                                </button>
+
+                            </div>
+
+                        ))
+
+                    )}
+
+                </div>
 
             </div>
 
         </div>
+
     );
+
 }
 
 export default Admin;

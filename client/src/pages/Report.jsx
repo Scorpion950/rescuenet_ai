@@ -28,37 +28,90 @@ function Report() {
 
             type: "",
             location: "",
-            severity: "",
             description: "",
             media: [],
+
             latitude: "",
             longitude: "",
 
         });
 
+    // Auto fetch GPS location
     useEffect(() => {
 
         navigator.geolocation.getCurrentPosition(
 
-            (position) => {
+            async (position) => {
 
-                setFormData((prev) => ({
+                const latitude =
+                    position.coords.latitude;
 
-                    ...prev,
+                const longitude =
+                    position.coords.longitude;
 
-                    latitude:
-                        position.coords.latitude,
+                // Reverse Geocoding
+                try {
 
-                    longitude:
-                        position.coords.longitude,
+                    const response =
+                        await fetch(
 
-                }));
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+
+                        );
+
+                    const data =
+                        await response.json();
+
+                    const address =
+                        data.address || {};
+
+                    const areaName =
+
+                        address.suburb ||
+
+                        address.neighbourhood ||
+
+                        address.city ||
+
+                        address.town ||
+
+                        address.village ||
+
+                        address.county ||
+
+                        address.state_district ||
+
+                        address.state ||
+
+                        "Current Location";
+
+                    setFormData((prev) => ({
+
+                        ...prev,
+
+                        latitude,
+                        longitude,
+
+                        location:
+                            areaName,
+
+                    }));
+
+                } catch (error) {
+
+                    console.error(error);
+
+                }
 
             },
 
             (error) => {
 
                 console.error(error);
+
+                alert(
+                    "Location access denied."
+                );
 
             }
 
@@ -80,7 +133,7 @@ function Report() {
 
     };
 
-    // Handle form submit
+    // Submit report
     const handleSubmit = async (e) => {
 
         e.preventDefault();
@@ -96,15 +149,9 @@ function Report() {
                 );
 
             const finalSeverity =
-                aiResult.severity;
 
-            if (aiResult.error) {
-
-                alert(
-                    "AI analysis unavailable. Report will still be submitted."
-                );
-
-            }
+                aiResult.severity ||
+                "PENDING";
 
             // Upload media
             let mediaUrls = [];
@@ -197,27 +244,26 @@ function Report() {
             );
 
             alert(
-
-                `Incident Report Submitted! AI Severity: ${finalSeverity}`
-
+                "Incident Report Submitted Successfully!"
             );
 
             // Reset form
-            setFormData({
+            setFormData((prev) => ({
 
                 type: "",
-                location: "",
-                severity: "",
                 description: "",
                 media: [],
 
+                location:
+                    prev.location,
+
                 latitude:
-                    formData.latitude,
+                    prev.latitude,
 
                 longitude:
-                    formData.longitude,
+                    prev.longitude,
 
-            });
+            }));
 
             // Reset file input
             if (fileInputRef.current) {
@@ -226,17 +272,17 @@ function Report() {
 
             }
 
-            setLoading(false);
-
         } catch (error) {
 
             console.error(error);
 
-            setLoading(false);
-
             alert(
                 "Failed to submit report"
             );
+
+        } finally {
+
+            setLoading(false);
 
         }
 
@@ -259,7 +305,7 @@ function Report() {
                     className="space-y-5"
                 >
 
-                    {/* Disaster Type */}
+                    {/* Type */}
                     <div>
 
                         <label className="block mb-2">
@@ -312,7 +358,6 @@ function Report() {
                         <input
                             type="text"
                             name="location"
-                            placeholder="Enter location"
                             value={formData.location}
                             onChange={handleChange}
                             className="w-full p-3 rounded-xl bg-slate-700 text-white"
@@ -342,7 +387,7 @@ function Report() {
 
                     </div>
 
-                    {/* Media Upload */}
+                    {/* Upload */}
                     <div>
 
                         <label className="block mb-2">
@@ -364,23 +409,13 @@ function Report() {
                                         e.target.files
                                     );
 
-                                // Max 3 files
                                 if (files.length > 3) {
 
                                     alert(
                                         "Maximum 3 files allowed"
                                     );
 
-                                    // Clear selected files
                                     e.target.value = "";
-
-                                    setFormData({
-
-                                        ...formData,
-
-                                        media: [],
-
-                                    });
 
                                     return;
 
@@ -401,7 +436,7 @@ function Report() {
 
                     </div>
 
-                    {/* Submit Button */}
+                    {/* Submit */}
                     <button
                         type="submit"
                         disabled={loading}

@@ -2,13 +2,11 @@ import {
     API_BASE_URL,
 } from "../utils/constants";
 
-export const sendSOSRequest =
+export const updateIncidentStatus =
     async (
 
-        services,
-        latitude,
-        longitude,
-        location
+        incidentId,
+        status
 
     ) => {
 
@@ -17,23 +15,23 @@ export const sendSOSRequest =
             const response =
                 await fetch(
 
-                    `${API_BASE_URL}/send-sos`,
+                    `${API_BASE_URL}/incident/status`,
 
                     {
 
                         method: "POST",
 
                         headers: {
+
                             "Content-Type":
                                 "application/json",
+
                         },
 
                         body: JSON.stringify({
 
-                            services,
-                            latitude,
-                            longitude,
-                            location,
+                            incidentId,
+                            status,
 
                         }),
 
@@ -50,7 +48,7 @@ export const sendSOSRequest =
             return {
 
                 error:
-                    "Failed to send SOS",
+                    "Failed to update status",
 
             };
 

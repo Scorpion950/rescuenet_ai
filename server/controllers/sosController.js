@@ -3,8 +3,11 @@ const calculateDistance = require(
     "../utils/distanceCalculator"
 );
 
+const findNearestStations =
+    require("../utils/findNearestStations");
+
 const db = require(
-    "../config/firebaseAdmin"
+    "../config/firebase"
 );
 
 const sendSOS = async (req, res) => {
@@ -12,10 +15,32 @@ const sendSOS = async (req, res) => {
     try {
 
         const {
-            service,
+
+            services,
             latitude,
             longitude,
+            location,
+
         } = req.body;
+
+        if (
+
+            !services ||
+
+            !Array.isArray(services) ||
+
+            services.length === 0
+
+        ) {
+
+            return res.status(400).json({
+
+                error:
+                    "At least one emergency service is required."
+
+            });
+
+        }
 
         const sosSnapshot =
             await db
@@ -92,13 +117,28 @@ const sendSOS = async (req, res) => {
 
         }
 
+        // Find nearest responder stations
+        const nearestStations =
+
+            findNearestStations(
+
+                services,
+                latitude,
+                longitude
+
+            );
+
         // Save SOS
         await db.collection("sosAlerts").add({
 
-            service,
+            services,
+            assignedStations:
+                nearestStations,
             latitude,
             longitude,
+            location,
             createdAt: new Date(),
+
 
         });
 
@@ -107,7 +147,11 @@ const sendSOS = async (req, res) => {
             success: true,
 
             message:
-                `${service} Alert Sent Successfully!`,
+
+                `${services.join(", ")} Alert Sent Successfully!`,
+
+            assignedStations:
+                nearestStations,
 
         });
 

@@ -1,5 +1,5 @@
 const db = require(
-    "../config/firebaseAdmin"
+    "../config/firebase"
 );
 
 const verifyIncident = async (

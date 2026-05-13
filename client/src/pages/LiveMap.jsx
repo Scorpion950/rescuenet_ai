@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
 
 import MapPopup from
     "../components/MapPopup";
@@ -23,7 +26,8 @@ import { db } from "../firebase";
 
 function LiveMap() {
 
-    const [reports, setReports] = useState([]);
+    const [reports, setReports] =
+        useState([]);
 
     // Verify Incident
     const verifyIncident = async (
@@ -43,7 +47,13 @@ function LiveMap() {
             );
 
             // Prevent duplicate voting
-            if (votedReports.includes(reportId)) {
+            if (
+
+                votedReports.includes(
+                    reportId
+                )
+
+            ) {
 
                 alert(
                     "You already voted for this incident."
@@ -54,22 +64,26 @@ function LiveMap() {
             }
 
             // Send vote to backend
-            const data =
-                await sendVerificationVote(
+            await sendVerificationVote(
 
-                    reportId,
-                    voteType
+                reportId,
+                voteType
 
-                );
-
-
+            );
 
             // Store vote locally
-            votedReports.push(reportId);
+            votedReports.push(
+                reportId
+            );
 
             localStorage.setItem(
+
                 "votedReports",
-                JSON.stringify(votedReports)
+
+                JSON.stringify(
+                    votedReports
+                )
+
             );
 
         } catch (error) {
@@ -83,25 +97,37 @@ function LiveMap() {
     // Fetch reports realtime
     useEffect(() => {
 
-        const unsubscribe = onSnapshot(
-            collection(db, "reports"),
-            (snapshot) => {
+        const unsubscribe =
+            onSnapshot(
 
-                const fetchedReports = [];
+                collection(
+                    db,
+                    "reports"
+                ),
 
-                snapshot.forEach((doc) => {
+                (snapshot) => {
 
-                    fetchedReports.push({
-                        id: doc.id,
-                        ...doc.data(),
+                    const fetchedReports = [];
+
+                    snapshot.forEach((doc) => {
+
+                        fetchedReports.push({
+
+                            id: doc.id,
+
+                            ...doc.data(),
+
+                        });
+
                     });
 
-                });
+                    setReports(
+                        fetchedReports
+                    );
 
-                setReports(fetchedReports);
+                }
 
-            }
-        );
+            );
 
         return () => unsubscribe();
 
@@ -111,10 +137,13 @@ function LiveMap() {
 
         <div className="p-6">
 
-            <h1 className="text-4xl font-bold mb-6">
+            <h1 className="text-5xl font-bold mb-8">
+
                 Live Disaster Map
+
             </h1>
 
+            {/* Empty State */}
             {reports.length === 0 && (
 
                 <div className="bg-slate-800 p-5 rounded-2xl text-center mb-6 text-gray-300">
@@ -125,49 +154,80 @@ function LiveMap() {
 
             )}
 
-            <MapContainer
-                center={[18.5204, 73.8567]}
-                zoom={5}
-                style={{
-                    height: "80vh",
-                    width: "100%",
-                }}
-            >
+            {/* MAP ALWAYS SHOWS */}
+            <div className="h-[75vh] rounded-2xl overflow-hidden shadow-lg">
 
-                <TileLayer
-                    attribution='&copy; OpenStreetMap contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <MapContainer
 
-                {reports.map((report) => (
+                    center={[
+                        20.5937,
+                        78.9629
+                    ]}
 
-                    <Marker
-                        key={report.id}
-                        position={[
-                            report.latitude || 18.5204,
-                            report.longitude || 73.8567,
-                        ]}
-                    >
+                    zoom={5}
 
-                        <Popup>
+                    minZoom={3}
 
-                            <MapPopup
+                    maxZoom={18}
 
-                                report={report}
+                    maxBounds={[
+                        [-90, -180],
+                        [90, 180]
+                    ]}
 
-                                verifyIncident={
-                                    verifyIncident
-                                }
+                    maxBoundsViscosity={1.0}
 
-                            />
+                    className="h-full w-full"
+                >
 
-                        </Popup>
+                    <TileLayer
 
-                    </Marker>
+                        attribution='&copy; OpenStreetMap contributors'
 
-                ))}
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 
-            </MapContainer>
+                        noWrap={true}
+
+                    />
+
+                    {/* INCIDENT MARKERS */}
+                    {reports.map((report) => (
+
+                        <Marker
+
+                            key={report.id}
+
+                            position={[
+
+                                report.latitude || 18.5204,
+
+                                report.longitude || 73.8567,
+
+                            ]}
+
+                        >
+
+                            <Popup>
+
+                                <MapPopup
+
+                                    report={report}
+
+                                    verifyIncident={
+                                        verifyIncident
+                                    }
+
+                                />
+
+                            </Popup>
+
+                        </Marker>
+
+                    ))}
+
+                </MapContainer>
+
+            </div>
 
         </div>
 

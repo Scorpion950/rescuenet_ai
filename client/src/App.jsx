@@ -1,68 +1,272 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+} from "react-router-dom";
 
-import Home from "./pages/Home";
-import Report from "./pages/Report";
-import LiveMap from "./pages/LiveMap";
-import Admin from "./pages/Admin";
-import SOS from "./pages/SOS";
+/* USER LAYOUT */
+import UserLayout from
+  "./layouts/UserLayout";
+
+/* ADMIN LAYOUT */
+import AdminLayout from
+  "./layouts/AdminLayout";
+
+/* RESPONDER LAYOUT */
+import ResponderLayout from
+  "./layouts/ResponderLayout";
+
+/* PROTECTED ROUTES */
+import AdminProtectedRoute from
+  "./components/ProtectedRoutes/AdminProtectedRoute";
+
+import ResponderProtectedRoute from
+  "./components/ProtectedRoutes/ResponderProtectedRoute";
+
+/* USER PAGES */
+import Home from
+  "./pages/Home";
+
+import Report from
+  "./pages/Report";
+
+import LiveMap from
+  "./pages/LiveMap";
+
+import SOS from
+  "./pages/SOS";
+
+/* ADMIN LOGIN */
+import AdminLogin from
+  "./pages/AdminLogin";
+
+/* RESPONDER LOGIN */
+import ResponderLogin from
+  "./pages/ResponderLogin";
+
+/* ADMIN PAGES */
+import AdminOverview from
+  "./pages/admin/AdminOverview";
+
+import AdminMap from
+  "./pages/admin/AdminMap";
+
+import AdminSOS from
+  "./pages/admin/AdminSOS";
+
+import AdminReports from
+  "./pages/admin/AdminReports";
+
+/* RESPONDER PAGES */
+import PoliceDashboard from
+  "./pages/responder/PoliceDashboard";
+
+import AmbulanceDashboard from
+  "./pages/responder/AmbulanceDashboard";
+
+import FireDashboard from
+  "./pages/responder/FireDashboard";
 
 function App() {
+
   return (
+
     <BrowserRouter>
 
-      <div className="min-h-screen bg-slate-900 text-white">
+      <Routes>
 
-        {/* Navbar */}
-        <nav className="flex justify-between items-center px-8 py-4 bg-slate-800 shadow-lg">
+        {/* USER ROUTES */}
+        <Route
+          element={<UserLayout />}
+        >
 
-          <h1 className="text-2xl font-bold text-red-500">
-            RescueNet AI
-          </h1>
+          <Route
+            path="/"
+            element={<Home />}
+          />
 
-          <div className="space-x-6">
+          <Route
+            path="/report"
+            element={<Report />}
+          />
 
-            <Link to="/sos" className="hover:text-red-400">
-              SOS
-            </Link>
+          <Route
+            path="/livemap"
+            element={<LiveMap />}
+          />
 
-            <Link to="/" className="hover:text-red-400">
-              Home
-            </Link>
+          <Route
+            path="/sos"
+            element={<SOS />}
+          />
 
-            <Link to="/report" className="hover:text-red-400">
-              Report
-            </Link>
+          <Route
+            path="/admin-access"
+            element={<AdminLogin />}
+          />
 
-            <Link to="/map" className="hover:text-red-400">
-              Live Map
-            </Link>
+        </Route>
 
-            <Link to="/admin" className="hover:text-red-400">
-              Admin
-            </Link>
+        {/* ADMIN ROUTES */}
+        <Route
+          element={<AdminLayout />}
+        >
 
-          </div>
-        </nav>
+          {/* Overview */}
+          <Route
 
-        {/* Routes */}
-        <Routes>
+            path="/admin"
 
-          <Route path="/sos" element={<SOS />} />
+            element={
 
-          <Route path="/" element={<Home />} />
+              <AdminProtectedRoute>
 
-          <Route path="/report" element={<Report />} />
+                <AdminOverview />
 
-          <Route path="/map" element={<LiveMap />} />
+              </AdminProtectedRoute>
 
-          <Route path="/admin" element={<Admin />} />
+            }
 
-        </Routes>
+          />
 
-      </div>
+          {/* Admin Map */}
+          <Route
+
+            path="/admin/map"
+
+            element={
+
+              <AdminProtectedRoute>
+
+                <AdminMap />
+
+              </AdminProtectedRoute>
+
+            }
+
+          />
+
+          {/* SOS */}
+          <Route
+
+            path="/admin/sos"
+
+            element={
+
+              <AdminProtectedRoute>
+
+                <AdminSOS />
+
+              </AdminProtectedRoute>
+
+            }
+
+          />
+
+          {/* Reports */}
+          <Route
+
+            path="/admin/reports"
+
+            element={
+
+              <AdminProtectedRoute>
+
+                <AdminReports />
+
+              </AdminProtectedRoute>
+
+            }
+
+          />
+
+        </Route>
+
+        {/* RESPONDER ROUTES */}
+        <Route
+          element={<ResponderLayout />}
+        >
+
+          {/* Responder Login */}
+          <Route
+
+            path="/responder"
+
+            element={<ResponderLogin />}
+
+          />
+
+          {/* Police */}
+          <Route
+
+            path="/responder/police"
+
+            element={
+
+              <ResponderProtectedRoute
+
+                responderType="Police"
+
+              >
+
+                <PoliceDashboard />
+
+              </ResponderProtectedRoute>
+
+            }
+
+          />
+
+          {/* Ambulance */}
+          <Route
+
+            path="/responder/ambulance"
+
+            element={
+
+              <ResponderProtectedRoute
+
+                responderType="Ambulance"
+
+              >
+
+                <AmbulanceDashboard />
+
+              </ResponderProtectedRoute>
+
+            }
+
+          />
+
+          {/* Fire */}
+          <Route
+
+            path="/responder/fire"
+
+            element={
+
+              <ResponderProtectedRoute
+
+                responderType="Fire Brigade"
+
+              >
+
+                <FireDashboard />
+
+              </ResponderProtectedRoute>
+
+            }
+
+          />
+
+        </Route>
+
+      </Routes>
 
     </BrowserRouter>
+
   );
+
 }
 
 export default App;

@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 
 const db = require(
-    "../config/firebaseAdmin"
+    "../config/firebase"
 );
 
 // Auto Resolve Every 5 Minutes
