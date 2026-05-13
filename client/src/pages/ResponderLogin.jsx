@@ -25,7 +25,8 @@ function ResponderLogin() {
         useState("");
 
     // Login
-    const handleLogin = async () => {
+    const handleLogin = async (e) => {
+        if (e) e.preventDefault();
 
         try {
 
@@ -136,84 +137,84 @@ function ResponderLogin() {
 
     return (
 
-        <div className="min-h-screen flex justify-center items-center bg-slate-950 text-white">
+        <div className="min-h-screen flex justify-center items-center bg-mesh text-white px-4">
 
-            <div className="bg-slate-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
+            <div className="glass-panel p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/10">
 
-                <h1 className="text-4xl font-bold mb-8 text-center">
+                <h1 className="text-4xl font-extrabold mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">
 
                     Responder Portal
 
                 </h1>
 
-                {/* Department */}
-                <select
+                <form onSubmit={handleLogin} className="space-y-6">
+                    {/* Department */}
+                    <select
 
-                    value={department}
+                        value={department}
 
-                    onChange={(e) =>
+                        onChange={(e) =>
 
-                        setDepartment(
-                            e.target.value
-                        )
+                            setDepartment(
+                                e.target.value
+                            )
 
-                    }
+                        }
 
-                    className="w-full p-3 rounded-xl bg-slate-700 mb-4"
+                        className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
 
-                >
+                    >
 
-                    <option value="">
-                        Select Department
-                    </option>
+                        <option value="">
+                            Select Department
+                        </option>
 
-                    <option value="Police">
-                        Police
-                    </option>
+                        <option value="Police">
+                            Police
+                        </option>
 
-                    <option value="Ambulance">
-                        Ambulance
-                    </option>
+                        <option value="Ambulance">
+                            Ambulance
+                        </option>
 
-                    <option value="Fire Brigade">
-                        Fire Brigade
-                    </option>
+                        <option value="Fire Brigade">
+                            Fire Brigade
+                        </option>
 
-                </select>
+                    </select>
 
-                {/* Password */}
-                <input
+                    {/* Password */}
+                    <input
 
-                    type="password"
+                        type="password"
 
-                    placeholder="Enter Password"
+                        placeholder="Enter Password"
 
-                    value={password}
+                        value={password}
 
-                    onChange={(e) =>
+                        onChange={(e) =>
 
-                        setPassword(
-                            e.target.value
-                        )
+                            setPassword(
+                                e.target.value
+                            )
 
-                    }
+                        }
 
-                    className="w-full p-3 rounded-xl bg-slate-700 mb-6"
+                        className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
 
-                />
+                    />
 
-                {/* Login */}
-                <button
+                    {/* Login */}
+                    <button
+                        type="submit"
+                        className="btn-premium w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 p-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-900/50"
 
-                    onClick={handleLogin}
+                    >
 
-                    className="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-xl font-bold"
+                        Login
 
-                >
-
-                    Login
-
-                </button>
+                    </button>
+                </form>
 
             </div>
 

@@ -10,7 +10,7 @@ function ResponderLayout() {
 
     return (
 
-        <div className="min-h-screen bg-slate-950 text-white">
+        <div className="min-h-screen bg-mesh text-white">
 
             {/* Top Bar */}
             <div className="flex justify-end p-5">

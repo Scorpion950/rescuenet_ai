@@ -290,11 +290,11 @@ function Report() {
 
     return (
 
-        <div className="min-h-screen flex justify-center items-center px-4">
+        <div className="min-h-screen flex justify-center items-center px-4 py-12 relative">
 
-            <div className="bg-slate-800 p-8 rounded-2xl shadow-lg w-full max-w-2xl">
+            <div className="glass-panel p-10 rounded-3xl shadow-2xl w-full max-w-2xl border border-white/10 relative z-10">
 
-                <h1 className="text-4xl font-bold mb-6 text-center text-red-500">
+                <h1 className="text-5xl font-extrabold mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 drop-shadow-sm">
 
                     Report Emergency
 
@@ -302,13 +302,13 @@ function Report() {
 
                 <form
                     onSubmit={handleSubmit}
-                    className="space-y-5"
+                    className="space-y-6"
                 >
 
                     {/* Type */}
                     <div>
 
-                        <label className="block mb-2">
+                        <label className="block mb-2 text-gray-300 font-medium">
 
                             Disaster Type
 
@@ -318,7 +318,7 @@ function Report() {
                             name="type"
                             value={formData.type}
                             onChange={handleChange}
-                            className="w-full p-3 rounded-xl bg-slate-700 text-white"
+                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                             required
                         >
 
@@ -349,7 +349,7 @@ function Report() {
                     {/* Location */}
                     <div>
 
-                        <label className="block mb-2">
+                        <label className="block mb-2 text-gray-300 font-medium">
 
                             Location
 
@@ -360,7 +360,7 @@ function Report() {
                             name="location"
                             value={formData.location}
                             onChange={handleChange}
-                            className="w-full p-3 rounded-xl bg-slate-700 text-white"
+                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all"
                             required
                         />
 
@@ -369,7 +369,7 @@ function Report() {
                     {/* Description */}
                     <div>
 
-                        <label className="block mb-2">
+                        <label className="block mb-2 text-gray-300 font-medium">
 
                             Description
 
@@ -377,11 +377,11 @@ function Report() {
 
                         <textarea
                             name="description"
-                            placeholder="Describe the emergency"
+                            placeholder="Describe the emergency in detail..."
                             value={formData.description}
                             onChange={handleChange}
                             rows="5"
-                            className="w-full p-3 rounded-xl bg-slate-700 text-white"
+                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
                             required
                         />
 
@@ -390,9 +390,9 @@ function Report() {
                     {/* Upload */}
                     <div>
 
-                        <label className="block mb-2">
+                        <label className="block mb-2 text-gray-300 font-medium">
 
-                            Upload Images / Videos
+                            Upload Images / Videos (Max 3)
 
                         </label>
 
@@ -431,7 +431,7 @@ function Report() {
 
                             }}
 
-                            className="w-full p-3 rounded-xl bg-slate-700 text-white"
+                            className="w-full p-4 rounded-xl bg-slate-800/50 text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-500 file:text-white hover:file:bg-red-600 transition-all border border-white/5"
                         />
 
                     </div>
@@ -440,13 +440,13 @@ function Report() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-red-600 hover:bg-red-700 p-3 rounded-xl font-semibold text-lg disabled:opacity-50"
+                        className="btn-premium mt-8 w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 p-4 rounded-xl font-bold text-xl shadow-lg shadow-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
 
                         {
 
                             loading
-                                ? "Submitting..."
+                                ? "Submitting securely..."
                                 : "Submit Report"
 
                         }

@@ -22,7 +22,8 @@ function AdminLogin() {
         useState("");
 
     // Login
-    const handleLogin = async () => {
+    const handleLogin = async (e) => {
+        if (e) e.preventDefault();
 
         try {
 
@@ -99,47 +100,47 @@ function AdminLogin() {
 
     return (
 
-        <div className="min-h-screen flex justify-center items-center bg-slate-900 text-white px-4">
+        <div className="min-h-screen flex justify-center items-center bg-mesh text-white px-4">
 
-            <div className="bg-slate-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
+            <div className="glass-panel p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/10">
 
-                <h1 className="text-3xl font-bold text-center mb-6 text-red-500">
+                <h1 className="text-4xl font-extrabold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400">
 
                     Admin Access
 
                 </h1>
 
-                <input
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <input
 
-                    type="password"
+                        type="password"
 
-                    placeholder="Enter Admin Key"
+                        placeholder="Enter Admin Key"
 
-                    value={adminKey}
+                        value={adminKey}
 
-                    onChange={(e) =>
+                        onChange={(e) =>
 
-                        setAdminKey(
-                            e.target.value
-                        )
+                            setAdminKey(
+                                e.target.value
+                            )
 
-                    }
+                        }
 
-                    className="w-full p-3 rounded-xl bg-slate-700 text-white mb-4"
+                        className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all"
 
-                />
+                    />
 
-                <button
+                    <button
+                        type="submit"
+                        className="btn-premium w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 p-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50"
 
-                    onClick={handleLogin}
+                    >
 
-                    className="w-full bg-red-600 hover:bg-red-700 p-3 rounded-xl font-semibold"
+                        Access Dashboard
 
-                >
-
-                    Access Dashboard
-
-                </button>
+                    </button>
+                </form>
 
             </div>
 

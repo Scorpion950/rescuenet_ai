@@ -35,15 +35,14 @@ export const fetchNearbyIncidents =
 
                 );
 
-            return await response.json();
+            const data = await response.json();
+            return data.incidents || [];
 
         } catch (error) {
 
             console.error(error);
 
-            return {
-                incidents: [],
-            };
+            return [];
 
         }
 
