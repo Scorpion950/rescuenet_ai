@@ -13,11 +13,10 @@ function Navbar() {
                 {/* Logo */}
                 <Link
                     to="/"
-                    className="text-2xl font-bold text-red-500"
+                    className="flex items-center gap-3 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-500"
                 >
-
+                    <img src="/logo.png" alt="RescueNet AI Logo" className="w-10 h-10 object-contain drop-shadow-lg" />
                     RescueNet AI
-
                 </Link>
 
                 {/* Navigation Links */}
