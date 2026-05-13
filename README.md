@@ -1,162 +1,498 @@
-# RescueNet_Ai
+# rescuenet_ai
+AI-powered real-time disaster response and emergency mapping platform.
 
-A comprehensive, multi-agent AI-powered real-time disaster management ecosystem. This system streamlines emergency response from citizen SOS alerts to professional responder dispatch and status tracking, all supported by intelligent routing and incident analysis.
+# RescueNet AI 🚨
 
-## 🏗️ Architecture
+AI-Powered Disaster Response & Emergency Management Platform
 
-RescueNet_Ai operates as a full-stack MERN application with specialized modules for disaster management.
+---
 
-*   **Frontend**: React + Redux Toolkit
-*   **Backend**: Express.js + Node.js
-*   **Database**: Firebase Firestore
-*   **AI/ML**: Custom AI services for disaster prediction, route optimization, and incident classification
-*   **Mapping**: Google Maps Platform (Geocoding, Directions, Map Styling)
+## 📌 Overview
 
-## 🚀 Core Features
+RescueNet AI is a smart emergency response platform designed to help civilians, responders, and administrators coordinate efficiently during disasters and emergency situations.
 
-### Citizen-Facing Features
+The system allows users to:
 
-*   **SOS Alerts**: Instant emergency alerts with real-time location tracking.
-*   **Victim Dashboard**: Track the status of your emergency request.
-*   **Incident Reports**: View and manage your emergency reports.
+* Report emergencies in real time
+* Send SOS requests to nearby emergency services
+* View live disaster locations on an interactive map
+* Verify incidents through community voting
+* Automatically notify the nearest emergency responders
+* Manage incidents through dedicated admin and responder dashboards
 
-### Responder & Dispatch Features
+The platform is designed with scalability, modular backend architecture, real-time updates, and role-based access systems.
 
-*   **Responder Dashboard**: Monitor incoming SOS requests and active incidents.
-*   **Smart Routing**: AI-powered shortest path and traffic-aware routing to incident locations.
-*   **Status Management**: Update incident status (Pending, In Progress, Completed) with real-time updates.
+---
 
-### Admin Features
+# ✨ Key Features
 
-*   **Incident Management**: Overview of all active and historical incidents.
-*   **Responder Management**: Onboard, manage, and monitor rescue team members.
-*   **Disaster Modeling**: AI-driven insights and prediction models for disaster management.
-*   **System Health**: Monitor overall system performance and alerts.
+## 👤 User Features
 
-### Security
+### 🚨 Emergency Reporting
 
-*   **Role-Based Access**: Secure authentication for Citizens, Responders, and Admins.
-*   **Rate Limiting**: Request rate limiting to ensure system stability.
+Users can report incidents such as:
 
-## 🛠️ Tech Stack
+* Fire outbreaks
+* Medical emergencies
+* Floods
+* Accidents
+* Crimes
+* Natural disasters
 
-### Frontend
+Reports include:
 
-*   **UI Framework**: React 18
-*   **State Management**: Redux Toolkit
-*   **Routing**: React Router
-*   **Mapping**: `react-google-maps`
-*   **Styling**: Custom CSS + Google Maps custom styling
+* Live GPS location
+* Incident type
+* Severity level
+* Description
+* Uploaded media/images
 
-### Backend
+---
 
-*   **Runtime**: Node.js (v22.18.0)
-*   **Framework**: Express.js
-*   **Database**: Firebase Admin SDK
-*   **Security**: JWT-based authentication, Password Hashing
-*   **AI Services**: Custom AI microservices for routing and predictions
+### 🆘 SOS Emergency System
 
-### Services & Tools
+Users can instantly request emergency help.
 
-*   **Google Maps API**: Geocoding, Directions, Static Maps
-*   **Firebase Admin SDK**: Real-time database and authentication services
+Supported services:
 
-## 🏁 Getting Started
+* 🚓 Police
+* 🚑 Ambulance
+* 🚒 Fire Brigade
 
-Follow these instructions to set up and run the project locally.
+Supports:
 
-### Prerequisites
+* Single-service SOS
+* Multi-service SOS
 
-*   Node.js (v20.0.0 or higher)
-*   npm (or yarn)
-*   Google Cloud Project with Maps Platform APIs enabled
-*   Firebase Project with Firestore Database
+Example:
 
-### 1. Backend Setup
+* Police + Ambulance
+* Ambulance + Fire Brigade
+* Police + Fire Brigade
 
-1.  Navigate to the server directory:
-    ```bash
-    cd server
-    ```
+The system automatically identifies and assigns the nearest responder stations.
 
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+---
 
-3.  Configure Environment Variables:
-    Create a `.env` file in the `server` directory:
-    ```env
-    PORT=5000
-    GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_KEY
-    FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
-    ```
-    *   Get your Google Maps API Key from the Google Cloud Console.
-    *   Download the Firebase Admin SDK JSON file and rename it to `serviceAccountKey.json`, then place it in the `server/config` folder.
+### 🗺️ Live Disaster Map
 
-4.  Start the server:
-    ```bash
-    node index.js
-    ```
-    The server will start on `http://localhost:5000`.
+Interactive live map built using Leaflet.
 
-### 2. Frontend Setup
+Features:
 
-1.  Navigate to the client directory:
-    ```bash
-    cd client
-    ```
+* Real-time incident markers
+* Disaster visualization
+* Incident verification voting
+* GPS-based reporting
+* Location-based alerts
 
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+---
 
-3.  Configure Environment Variables:
-    Create a `.env` file in the `client` directory:
-    ```env
-    VITE_API_URL=http://localhost:5000
-    VITE_GOOGLE_MAPS_KEY=YOUR_GOOGLE_MAPS_KEY
-    ```
+### ✅ Community Verification System
 
-4.  Start the development server:
-    ```bash
-    npm run dev
-    ```
-    The application will be available at `http://localhost:5173`.
+Users can vote on incidents to verify authenticity.
 
-### 3. Seed Database (Admin Setup)
+Voting types:
 
-To use the application, you need an admin user.
+* Confirm
+* Fake/Spam
 
-1.  Go to `http://localhost:5173` and register a new account (e.g., with email `admin@example.com`).
-2.  Access the admin panel at `http://localhost:5173/admin`.
-3.  (Optional) Manually promote your account to admin in the Firebase Console Firestore database (`users` collection) or by running a script (not included in this version).
+This helps reduce false reports.
 
-## 📁 Project Structure
+---
+
+# 🛡️ Admin Features
+
+## 🔐 Admin Authentication
+
+Protected admin routes using role-based route protection.
+
+---
+
+## 📊 Admin Dashboard
+
+Separate dashboard for administrators.
+
+Includes:
+
+* Incident monitoring
+* SOS management
+* Live map overview
+* Report management
+* Responder tracking
+
+---
+
+## 🗺️ Admin Live Map
+
+Admins can monitor:
+
+* Active incidents
+* Deployed responders
+* SOS locations
+* Disaster clusters
+
+---
+
+## 📁 Report Management
+
+Admins can:
+
+* View all reports
+* Monitor incident status
+* Track disaster activity
+
+---
+
+# 🚓 Responder System
+
+Dedicated responder system for:
+
+* Police
+* Ambulance
+* Fire Brigade
+
+---
+
+## 🔒 Responder Authentication
+
+Each responder department has:
+
+* Separate login
+* Password protection
+* Role-based dashboard access
+
+Security features:
+
+* Protected routes
+* Department isolation
+* Unauthorized access prevention
+
+---
+
+## 🚑 Responder Dashboards
+
+Each department only sees incidents relevant to them.
+
+Example:
+
+* Police sees police-related incidents
+* Ambulance sees medical incidents
+* Fire brigade sees fire incidents
+
+Multi-service incidents appear to all assigned departments.
+
+---
+
+## 🚨 Incident Workflow
+
+Responders can:
+
+### Deploy Incident
+
+Status changes:
 
 ```
-rescuenet_ai/
-├── client/                # React Frontend
-│   ├── src/
-│   │   ├── components/    # React Components
-│   │   ├── pages/       # Page Components
-│   │   ├── redux/       # Redux Toolkit Stores
-│   │   └── layouts/     # Layouts (Citizen, Responder, Admin)
-│   └── package.json
-├── server/                # Node.js Backend
-│   ├── config/          # Firebase Config & Service Account
-│   ├── routes/          # API Routes
-│   ├── controllers/     # Request Controllers
-│   ├── services/        # Business Logic & AI Services
-│   ├── middleware/      # Middleware (Auth, Validation)
-│   └── .env             # Environment Variables
-├── README.md              # Project Documentation
-└── .gitignore             # Git Ignore Rules
+PENDING → DEPLOYED
 ```
 
-## 📝 Notes
+### Resolve Incident
 
-*   This project uses a **Service Worker** for background location tracking (optional, can be disabled in the browser).
-*   **Firebase Firestore** is used for real-time data synchronization across the application.
-*   **Rate limiting** is implemented on the backend to prevent abuse.
+Status changes:
+
+```
+DEPLOYED → RESOLVED
+```
+
+---
+
+# 🤖 AI Integration
+
+## Gemini AI
+
+Google Gemini AI is integrated for:
+
+* Severity analysis
+* Intelligent classification
+* Emergency analysis support
+
+---
+
+# ⚙️ Tech Stack
+
+## Frontend
+
+* React.js
+* Vite
+* Tailwind CSS
+* React Router DOM
+* React Leaflet
+* Firebase SDK
+
+---
+
+## Backend
+
+* Node.js
+* Express.js
+* Firebase Admin SDK
+* Firestore Database
+* Node Cron
+
+---
+
+## Database
+
+* Firebase Firestore
+
+---
+
+## Maps & Location
+
+* Leaflet Maps
+* OpenStreetMap
+* Browser Geolocation API
+* Reverse Geocoding
+
+---
+
+## AI
+
+* Google Gemini AI
+
+---
+
+# 🏗️ Project Architecture
+
+## Frontend Structure
+
+```bash
+client/src
+│
+├── components
+├── layouts
+├── pages
+│   ├── admin
+│   └── responder
+├── services
+├── hooks
+├── utils
+└── firebase
+```
+
+---
+
+## Backend Structure
+
+```bash
+server
+│
+├── controllers
+├── routes
+├── jobs
+├── utils
+├── config
+├── middleware
+└── index.js
+```
+
+---
+
+# 📄 Important Routes
+
+## User Routes
+
+| Route      | Description       |
+| ---------- | ----------------- |
+| `/`        | Home Page         |
+| `/report`  | Report Incident   |
+| `/livemap` | Live Disaster Map |
+| `/sos`     | Emergency SOS     |
+
+---
+
+## Admin Routes
+
+| Route            | Description        |
+| ---------------- | ------------------ |
+| `/admin-access`  | Admin Login        |
+| `/admin`         | Admin Overview     |
+| `/admin/map`     | Admin Live Map     |
+| `/admin/sos`     | SOS Management     |
+| `/admin/reports` | Reports Management |
+
+---
+
+## Responder Routes
+
+| Route                  | Description         |
+| ---------------------- | ------------------- |
+| `/responder`           | Responder Login     |
+| `/responder/police`    | Police Dashboard    |
+| `/responder/ambulance` | Ambulance Dashboard |
+| `/responder/fire`      | Fire Dashboard      |
+
+---
+
+# 🔐 Security Features
+
+* Role-based authentication
+* Protected routes
+* Admin isolation
+* Responder isolation
+* Firebase secret protection
+* Rate limiting
+* Unauthorized access prevention
+
+---
+
+# 🌍 Real-Time Features
+
+* Live Firestore updates
+* Real-time incident monitoring
+* Dynamic responder updates
+* Instant SOS requests
+* Live map marker updates
+
+---
+
+# 🚀 Future Improvements
+
+Potential future upgrades:
+
+* SMS/Email alerts
+* Push notifications
+* AI-based disaster prediction
+* Heatmap analytics
+* Voice SOS system
+* Offline emergency support
+* Mobile app version
+* Real responder station integration
+* Satellite/weather APIs
+
+---
+
+# 🧪 Testing
+
+## Admin Login
+
+Access:
+
+```
+/admin-access
+```
+
+---
+
+## Responder Login
+
+Access:
+
+```
+/responder
+```
+
+Departments:
+
+* Police
+* Ambulance
+* Fire Brigade
+
+---
+
+# 🛠️ Installation
+
+## Clone Repository
+
+```bash
+git clone https://github.com/yourusername/rescuenet_ai.git
+```
+
+---
+
+## Frontend Setup
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+---
+
+## Backend Setup
+
+```bash
+cd server
+npm install
+node index.js
+```
+
+---
+
+# 🔑 Environment Variables
+
+Create a `.env` file inside `server/`
+
+Example:
+
+```env
+GEMINI_API_KEY=your_api_key
+```
+
+---
+
+# 🔥 Firebase Setup
+
+1. Create Firebase project
+2. Enable Firestore
+3. Download Service Account Key
+4. Save as:
+
+```bash
+server/serviceAccountKey.json
+```
+
+5. Add to `.gitignore`
+
+---
+
+# 📷 Screenshots
+
+Add screenshots here:
+
+* Home Page
+* Live Map
+* SOS System
+* Admin Dashboard
+* Responder Dashboards
+
+---
+
+# 🎯 Project Goals
+
+The main goal of RescueNet AI is to:
+
+* Reduce emergency response time
+* Improve disaster coordination
+* Enable smart emergency communication
+* Assist responders with real-time information
+* Build a scalable AI-powered emergency platform
+
+---
+
+# 👨‍💻 Developed By
+
+RescueNet AI Team
+
+---
+
+# 📜 License
+
+This project is developed for educational, research, and hackathon purposes.
+
+---
+
+# ⭐ Final Note
+
+RescueNet AI demonstrates how AI, real-time systems, mapping technologies, and role-based emergency management can be combined to create a modern disaster response platform.
