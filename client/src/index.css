@@ -48,3 +48,46 @@ body {
   animation: pulse-red 2s infinite;
   border-color: rgba(220, 38, 38, 0.5);
 }
+
+/* Map Marker Cluster Premium Styles */
+.marker-cluster {
+  background-clip: padding-box;
+  border-radius: 20px;
+}
+
+.marker-cluster div {
+  width: 30px;
+  height: 30px;
+  margin-left: 5px;
+  margin-top: 5px;
+  text-align: center;
+  border-radius: 15px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.marker-cluster-small {
+  background-color: rgba(59, 130, 246, 0.6); /* Blue shadow */
+}
+.marker-cluster-small div {
+  background-color: rgba(37, 99, 235, 0.9); /* Blue solid */
+}
+
+.marker-cluster-medium {
+  background-color: rgba(234, 179, 8, 0.6); /* Yellow shadow */
+}
+.marker-cluster-medium div {
+  background-color: rgba(202, 138, 4, 0.9); /* Yellow solid */
+}
+
+.marker-cluster-large {
+  background-color: rgba(239, 68, 68, 0.6); /* Red shadow */
+}
+.marker-cluster-large div {
+  background-color: rgba(220, 38, 38, 0.9); /* Red solid */
+}

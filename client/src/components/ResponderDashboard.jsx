@@ -11,6 +11,15 @@ import {
     updateIncidentStatus,
 } from "../services/statusService";
 
+import {
+    collection,
+    query,
+    where,
+    onSnapshot
+} from "firebase/firestore";
+
+import { db } from "../firebase";
+
 import toast from "react-hot-toast";
 
 function ResponderDashboard({
@@ -24,6 +33,9 @@ function ResponderDashboard({
 
     const [loading, setLoading] =
         useState(true);
+    
+    // For real-time toasts without overriding backend logic
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     // Fetch incidents
     useEffect(() => {
@@ -85,6 +97,45 @@ function ResponderDashboard({
 
     }, [responderType]);
 
+    // Real-time notification listener
+    useEffect(() => {
+        const q = query(
+            collection(db, "reports"),
+            where("department", "==", responderType)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (!isInitialLoad) {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        const newIncident = change.doc.data();
+                        toast.error(`🚨 NEW EMERGENCY ASSIGNED: ${newIncident.type || 'Incident'}!`, {
+                            duration: 10000,
+                            position: 'top-right',
+                            style: {
+                                background: '#333',
+                                color: '#fff',
+                                fontWeight: 'bold'
+                            }
+                        });
+                        // Wait a moment and refetch the full incident list from backend
+                        // to get distances and assigned stations logic
+                        setTimeout(() => {
+                            fetch(`${API_BASE_URL}/responder-incidents/${responderType}`, {
+                                headers: { "x-responder-key": localStorage.getItem("responderType") }
+                            }).then(res => res.json()).then(data => {
+                                setIncidents(data.incidents || []);
+                            }).catch(console.error);
+                        }, 1000);
+                    }
+                });
+            }
+            setIsInitialLoad(false);
+        });
+
+        return () => unsubscribe();
+    }, [isInitialLoad, responderType]);
+
     // Loading State
     if (loading) {
 
@@ -102,9 +153,9 @@ function ResponderDashboard({
 
     return (
 
-        <div className="p-6 text-white">
+        <div className="p-6 text-white min-h-screen">
 
-            <h1 className="text-5xl font-bold mb-8">
+            <h1 className="text-5xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">
 
                 {responderType} Dashboard
 
@@ -114,7 +165,7 @@ function ResponderDashboard({
 
                 {incidents.length === 0 ? (
 
-                    <div className="bg-slate-800 p-10 rounded-2xl text-center text-gray-300 shadow-xl">
+                    <div className="glass-panel p-10 rounded-3xl text-center text-gray-300 shadow-2xl border border-white/10">
 
                         <h2 className="text-2xl font-bold mb-3">
 
@@ -138,14 +189,14 @@ function ResponderDashboard({
 
                             key={incident.id}
 
-                            className="bg-slate-800 p-6 rounded-2xl shadow-lg"
+                            className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10"
 
                         >
 
                             {/* Services */}
                             <div className="mb-4">
 
-                                <p className="font-bold mb-2">
+                                <p className="font-bold mb-2 text-gray-400">
 
                                     Services Requested:
 
@@ -159,7 +210,7 @@ function ResponderDashboard({
 
                                             key={service}
 
-                                            className="bg-red-700 px-3 py-1 rounded-xl"
+                                            className="bg-red-600/80 px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg shadow-red-900/30"
 
                                         >
 
@@ -176,13 +227,13 @@ function ResponderDashboard({
                             {/* Location */}
                             <div className="mb-4">
 
-                                <p className="font-bold">
+                                <p className="font-bold text-gray-400">
 
                                     Location:
 
                                 </p>
 
-                                <p>
+                                <p className="text-xl font-medium">
 
                                     {incident.location || "Unknown Area"}
 
@@ -191,15 +242,15 @@ function ResponderDashboard({
                             </div>
 
                             {/* Stations */}
-                            <div className="mb-4">
+                            <div className="mb-6">
 
-                                <p className="font-bold mb-2">
+                                <p className="font-bold mb-2 text-gray-400">
 
                                     Assigned Stations:
 
                                 </p>
 
-                                <div className="space-y-2">
+                                <div className="space-y-3">
 
                                     {incident.assignedStations?.map(
 
@@ -209,17 +260,17 @@ function ResponderDashboard({
 
                                                 key={index}
 
-                                                className="bg-black p-3 rounded-xl"
+                                                className="bg-slate-900/50 p-4 rounded-xl border border-white/5"
 
                                             >
 
-                                                <p className="font-semibold">
+                                                <p className="font-semibold text-lg text-blue-300">
 
                                                     {station.name}
 
                                                 </p>
 
-                                                <p className="text-sm text-gray-300">
+                                                <p className="text-sm text-gray-400">
 
                                                     {station.distance} KM away
 
@@ -236,13 +287,13 @@ function ResponderDashboard({
                             </div>
 
                             {/* Status */}
-                            <div className="mb-4">
+                            <div className="mb-6 flex items-center gap-3">
 
-                                <span className="font-bold">
+                                <span className="font-bold text-gray-400">
 
                                     Status:
 
-                                </span>{" "}
+                                </span>
 
                                 <span
 
@@ -250,13 +301,13 @@ function ResponderDashboard({
 
                                         incident.status === "RESOLVED"
 
-                                            ? "bg-green-600 px-3 py-1 rounded-full text-sm font-bold"
+                                            ? "bg-green-500/20 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-green-900/20"
 
                                             : incident.status === "DEPLOYED"
 
-                                                ? "bg-blue-600 px-3 py-1 rounded-full text-sm font-bold"
+                                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-blue-900/20"
 
-                                                : "bg-yellow-400 text-black px-3 py-1 rounded-full text-sm font-bold"
+                                                : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-yellow-900/20"
 
                                     }
 
@@ -269,7 +320,7 @@ function ResponderDashboard({
                             </div>
 
                             {/* Buttons */}
-                            <div className="flex gap-4 mb-4">
+                            <div className="flex flex-wrap gap-4 mb-6">
 
                                 <button
 
@@ -309,7 +360,7 @@ function ResponderDashboard({
 
                                     }}
 
-                                    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold transition"
+                                    className="btn-premium flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-900/50"
 
                                 >
 
@@ -355,7 +406,7 @@ function ResponderDashboard({
 
                                     }}
 
-                                    className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl font-bold transition"
+                                    className="btn-premium flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-green-900/50"
 
                                 >
 
@@ -363,10 +414,22 @@ function ResponderDashboard({
 
                                 </button>
 
+                                {/* Get Directions Button */}
+                                {incident.latitude && incident.longitude && (
+                                    <a
+                                        href={`https://www.google.com/maps/dir/?api=1&destination=${incident.latitude},${incident.longitude}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn-premium flex-1 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-500 hover:to-purple-600 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-purple-900/50 text-center flex items-center justify-center gap-2"
+                                    >
+                                        🗺️ Get Directions
+                                    </a>
+                                )}
+
                             </div>
 
                             {/* Time */}
-                            <div>
+                            <div className="text-gray-400 text-sm">
 
                                 <span className="font-bold">
 

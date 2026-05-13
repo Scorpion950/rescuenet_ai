@@ -3,7 +3,7 @@ import {
 } from "../utils/constants";
 
 export const analyzeEmergency =
-    async (description) => {
+    async (description, mediaUrls = []) => {
 
         try {
 
@@ -23,6 +23,7 @@ export const analyzeEmergency =
 
                         body: JSON.stringify({
                             description,
+                            mediaUrls,
                         }),
 
                     }
@@ -33,6 +34,7 @@ export const analyzeEmergency =
 
                 return {
                     severity: "PENDING",
+                    department: "Police", // Default fallback
                     error: true,
                 };
 
@@ -44,6 +46,8 @@ export const analyzeEmergency =
             return {
                 severity:
                     data.severity,
+                department:
+                    data.department,
                 error: false,
             };
 

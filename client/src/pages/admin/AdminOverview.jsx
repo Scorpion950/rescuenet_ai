@@ -18,6 +18,8 @@ function AdminOverview() {
     const [sosAlerts, setSosAlerts] =
         useState([]);
 
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+
     // Fetch Reports
     useEffect(() => {
 
@@ -32,6 +34,17 @@ function AdminOverview() {
                 (snapshot) => {
 
                     const fetchedReports = [];
+                    
+                    if (!isInitialLoad) {
+                        snapshot.docChanges().forEach((change) => {
+                            if (change.type === "added") {
+                                toast.error(`New Emergency Report: ${change.doc.data().type || 'Incident'}!`, {
+                                    duration: 6000,
+                                    position: 'top-right',
+                                });
+                            }
+                        });
+                    }
 
                     snapshot.forEach((doc) => {
 
@@ -49,13 +62,17 @@ function AdminOverview() {
                         fetchedReports
                     );
 
+                    setIsInitialLoad(false);
+
                 }
 
             );
 
         return () => unsubscribe();
 
-    }, []);
+    }, [isInitialLoad]);
+
+    const [isSosInitial, setIsSosInitial] = useState(true);
 
     // Fetch SOS Alerts
     useEffect(() => {
@@ -71,6 +88,17 @@ function AdminOverview() {
                 (snapshot) => {
 
                     const fetchedAlerts = [];
+                    
+                    if (!isSosInitial) {
+                        snapshot.docChanges().forEach((change) => {
+                            if (change.type === "added") {
+                                toast.error("🚨 NEW SOS ALERT TRIGGERED!", {
+                                    duration: 8000,
+                                    position: 'top-right',
+                                });
+                            }
+                        });
+                    }
 
                     snapshot.forEach((doc) => {
 
@@ -87,6 +115,8 @@ function AdminOverview() {
                     setSosAlerts(
                         fetchedAlerts
                     );
+                    
+                    setIsSosInitial(false);
 
                 }
 
@@ -94,7 +124,7 @@ function AdminOverview() {
 
         return () => unsubscribe();
 
-    }, []);
+    }, [isSosInitial]);
 
     // Statistics
     const severeReports =
@@ -126,28 +156,31 @@ function AdminOverview() {
         );
     return (
 
-        <div>
+        <div className="min-h-screen bg-mesh p-8 text-white relative">
+            
+            <div className="absolute inset-0 bg-black/40 z-0"></div>
 
-            {/* Page Title */}
-            <h1 className="text-5xl font-bold mb-10">
+            <div className="relative z-10">
+                {/* Page Title */}
+                <h1 className="text-6xl font-extrabold mb-12 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 drop-shadow-lg">
 
-                RescueNet Overview
+                    RescueNet Overview
 
-            </h1>
+                </h1>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
 
                 {/* Total Reports */}
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10 hover:border-blue-500/50 transition-colors duration-300">
 
-                    <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-400 mb-3">
 
                         Total Reports
 
                     </h2>
 
-                    <p className="text-5xl font-bold text-blue-400">
+                    <p className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 drop-shadow-md">
 
                         {reports.length}
 
@@ -156,15 +189,15 @@ function AdminOverview() {
                 </div>
 
                 {/* Active SOS */}
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-red-500/30 hover:border-red-500/60 transition-colors duration-300">
 
-                    <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-400 mb-3">
 
                         Active SOS Alerts
 
                     </h2>
 
-                    <p className="text-5xl font-bold text-red-400">
+                    <p className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500 drop-shadow-md">
 
                         {sosAlerts.length}
 
@@ -173,15 +206,15 @@ function AdminOverview() {
                 </div>
 
                 {/* Severe Incidents */}
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10 hover:border-yellow-500/50 transition-colors duration-300">
 
-                    <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-400 mb-3">
 
                         Severe Incidents
 
                     </h2>
 
-                    <p className="text-5xl font-bold text-yellow-400">
+                    <p className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 drop-shadow-md">
 
                         {severeReports.length}
 
@@ -190,15 +223,15 @@ function AdminOverview() {
                 </div>
 
                 {/* Verified Reports */}
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10 hover:border-green-500/50 transition-colors duration-300">
 
-                    <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                    <h2 className="text-xl font-semibold text-gray-400 mb-3">
 
                         Verified Reports
 
                     </h2>
 
-                    <p className="text-5xl font-bold text-green-400">
+                    <p className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400 drop-shadow-md">
 
                         {verifiedReports.length}
 
@@ -209,15 +242,15 @@ function AdminOverview() {
             </div>
 
             {/* System Status */}
-            <div className="mt-10 bg-slate-800 p-8 rounded-2xl shadow-lg">
+            <div className="mt-12 glass-panel p-10 rounded-3xl shadow-2xl border border-white/10">
 
-                <h2 className="text-3xl font-bold mb-6">
+                <h2 className="text-3xl font-extrabold mb-8 text-gray-200">
 
                     System Status
 
                 </h2>
 
-                <div className="space-y-4 text-lg">
+                <div className="space-y-6 text-xl">
 
                     <div className="flex justify-between">
 
@@ -285,6 +318,7 @@ function AdminOverview() {
 
                 </div>
 
+            </div>
             </div>
 
         </div>

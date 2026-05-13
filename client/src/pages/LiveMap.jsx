@@ -22,6 +22,8 @@ import {
     onSnapshot,
 } from "firebase/firestore";
 
+import MarkerClusterGroup from 'react-leaflet-cluster';
+
 import toast from "react-hot-toast";
 
 import { db } from "../firebase";
@@ -213,40 +215,47 @@ function LiveMap() {
 
                     />
 
-                    {/* INCIDENT MARKERS */}
-                    {reports.map((report) => (
+                    <MarkerClusterGroup
+                        chunkedLoading
+                        maxClusterRadius={50}
+                    >
+                        {/* INCIDENT MARKERS */}
+                        {reports
+                            .filter((report) => report.status !== "RESOLVED")
+                            .map((report) => (
 
-                        <Marker
+                            <Marker
 
-                            key={report.id}
+                                key={report.id}
 
-                            position={[
+                                position={[
 
-                                report.latitude || 18.5204,
+                                    report.latitude || 18.5204,
 
-                                report.longitude || 73.8567,
+                                    report.longitude || 73.8567,
 
-                            ]}
+                                ]}
 
-                        >
+                            >
 
-                            <Popup>
+                                <Popup>
 
-                                <MapPopup
+                                    <MapPopup
 
-                                    report={report}
+                                        report={report}
 
-                                    verifyIncident={
-                                        verifyIncident
-                                    }
+                                        verifyIncident={
+                                            verifyIncident
+                                        }
 
-                                />
+                                    />
 
-                            </Popup>
+                                </Popup>
 
-                        </Marker>
+                            </Marker>
 
-                    ))}
+                        ))}
+                    </MarkerClusterGroup>
 
                 </MapContainer>
 

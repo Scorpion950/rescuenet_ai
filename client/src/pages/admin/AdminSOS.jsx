@@ -89,21 +89,23 @@ function AdminSOS() {
 
     return (
 
-        <div>
+        <div className="p-8 min-h-screen bg-mesh text-white relative">
+            <div className="absolute inset-0 bg-black/40 z-0"></div>
+            
+            <div className="relative z-10">
+                <h1 className="text-6xl font-extrabold mb-12 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-rose-500 drop-shadow-lg">
 
-            <h1 className="text-5xl font-bold text-red-500 mb-8">
+                    SOS Management
 
-                SOS Management
-
-            </h1>
+                </h1>
 
             <div className="grid gap-6">
 
                 {sosAlerts.length === 0 ? (
 
-                    <div className="bg-slate-800 p-6 rounded-2xl text-center text-gray-300">
+                    <div className="glass-panel p-10 rounded-3xl text-center text-gray-300 shadow-2xl border border-white/10">
 
-                        No active SOS alerts.
+                        <h2 className="text-2xl font-bold">No active SOS alerts.</h2>
 
                     </div>
 
@@ -115,9 +117,11 @@ function AdminSOS() {
 
                             key={alert.id}
 
-                            className="bg-red-700 p-6 rounded-2xl shadow-lg"
+                            className="glass-panel p-8 rounded-3xl shadow-2xl border border-red-500/40 relative overflow-hidden group"
 
                         >
+                            {/* Animated Background Glow */}
+                            <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-4">
@@ -153,7 +157,7 @@ function AdminSOS() {
 
                                             key={service}
 
-                                            className="bg-black px-3 py-1 rounded-xl"
+                                            className="bg-red-600/80 px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg shadow-red-900/30 border border-red-500/30"
 
                                         >
 
@@ -203,23 +207,23 @@ function AdminSOS() {
 
                                                 key={index}
 
-                                                className="bg-black p-3 rounded-xl"
+                                                className="bg-slate-900/50 p-4 rounded-xl border border-white/5"
 
                                             >
 
-                                                <p className="font-semibold">
+                                                <p className="font-semibold text-lg text-blue-300">
 
                                                     {station.name}
 
                                                 </p>
 
-                                                <p className="text-sm text-gray-300">
+                                                <p className="text-sm text-gray-400">
 
                                                     {station.type}
 
                                                 </p>
 
-                                                <p className="text-sm text-gray-300">
+                                                <p className="text-sm text-gray-400">
 
                                                     {station.distance} KM away
 
@@ -271,11 +275,11 @@ function AdminSOS() {
                                     deleteSOS(alert.id)
                                 }
 
-                                className="bg-black hover:bg-gray-900 px-5 py-2 rounded-xl font-bold"
+                                className="btn-premium w-full bg-gradient-to-r from-red-700 to-red-900 hover:from-red-600 hover:to-red-800 px-6 py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-red-900/50"
 
                             >
 
-                                Delete SOS
+                                Delete SOS Alert
 
                             </button>
 
@@ -285,6 +289,7 @@ function AdminSOS() {
 
                 )}
 
+            </div>
             </div>
 
         </div>

@@ -130,6 +130,7 @@ const verifyIncident = async (
             verifiedNo,
             verifiedUnsure,
             status,
+            updatedAt: new Date(),
 
         });
 

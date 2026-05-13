@@ -25,16 +25,40 @@ const getNearbyIncidents = async (
 
         const nearbyReports = [];
 
-        reportsSnapshot.forEach((doc) => {
+        const now = Date.now();
+        const THIRTY_MINS = 30 * 60 * 1000;
+
+        for (const doc of reportsSnapshot.docs) {
 
             const report = doc.data();
+            const reportId = doc.id;
 
             // Skip resolved
             if (
                 report.status ===
                 "RESOLVED"
             ) {
-                return;
+                continue;
+            }
+
+            // AUTO-RESOLUTION LOGIC
+            const createdAt = report.createdAt?.toDate() || new Date(0);
+            const updatedAt = report.updatedAt?.toDate() || createdAt;
+            
+            const timeSinceCreated = now - createdAt.getTime();
+            const timeSinceUpdated = now - updatedAt.getTime();
+
+            const isStale = timeSinceCreated > THIRTY_MINS && timeSinceUpdated > THIRTY_MINS;
+            const hasTooManyNos = report.verifiedNo > (report.verifiedYes + 5); // 5 more No's than Yes's
+
+            if (isStale || hasTooManyNos) {
+                // Auto-resolve in database
+                await db.collection("reports").doc(reportId).update({
+                    status: "RESOLVED",
+                    autoResolved: true,
+                    resolvedAt: new Date()
+                });
+                continue; // Skip from nearby results
             }
 
             // Ensure coords exist
@@ -42,7 +66,7 @@ const getNearbyIncidents = async (
                 !report.latitude ||
                 !report.longitude
             ) {
-                return;
+                continue;
             }
 
             // Distance calculation
@@ -62,7 +86,7 @@ const getNearbyIncidents = async (
 
                 nearbyReports.push({
 
-                    id: doc.id,
+                    id: reportId,
                     ...report,
                     distance:
                         distance.toFixed(2),
@@ -71,7 +95,7 @@ const getNearbyIncidents = async (
 
             }
 
-        });
+        }
 
         res.json({
 

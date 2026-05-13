@@ -142,16 +142,7 @@ function Report() {
 
             setLoading(true);
 
-            // AI classification
-            const aiResult =
-                await classifyEmergency(
-                    formData.description
-                );
-
-            const finalSeverity =
-
-                aiResult.severity ||
-                "PENDING";
+            // We will do AI classification AFTER uploading media
 
             // Upload media
             let mediaUrls = [];
@@ -203,6 +194,21 @@ function Report() {
 
             }
 
+            // AI classification with Vision
+            const aiResult =
+                await classifyEmergency(
+                    formData.description,
+                    mediaUrls
+                );
+
+            const finalSeverity =
+                aiResult.severity ||
+                "PENDING";
+            
+            const assignedDepartment =
+                aiResult.department ||
+                "Police";
+
             // Save report
             await addDoc(
 
@@ -221,6 +227,9 @@ function Report() {
 
                     severity:
                         finalSeverity,
+                    
+                    department:
+                        assignedDepartment,
 
                     mediaUrls,
 

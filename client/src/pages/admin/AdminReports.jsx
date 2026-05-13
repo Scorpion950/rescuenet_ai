@@ -89,21 +89,23 @@ function AdminReports() {
 
     return (
 
-        <div>
+        <div className="p-8 min-h-screen bg-mesh text-white relative">
+            <div className="absolute inset-0 bg-black/40 z-0"></div>
+            
+            <div className="relative z-10">
+                <h1 className="text-6xl font-extrabold mb-12 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 drop-shadow-lg">
 
-            <h1 className="text-5xl font-bold text-blue-400 mb-8">
+                    Incident Reports
 
-                Incident Reports
-
-            </h1>
+                </h1>
 
             <div className="grid gap-6">
 
                 {reports.length === 0 ? (
 
-                    <div className="bg-slate-800 p-6 rounded-2xl text-center text-gray-300">
+                    <div className="glass-panel p-10 rounded-3xl text-center text-gray-300 shadow-2xl border border-white/10">
 
-                        No disaster reports available.
+                        <h2 className="text-2xl font-bold">No disaster reports available.</h2>
 
                     </div>
 
@@ -115,16 +117,23 @@ function AdminReports() {
 
                             key={report.id}
 
-                            className="bg-slate-800 p-6 rounded-2xl shadow-lg"
+                            className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10 hover:border-blue-500/30 transition-colors duration-300"
 
                         >
 
                             {/* Type */}
-                            <h2 className="text-2xl font-bold text-red-400 mb-3">
+                            <div className="flex justify-between items-start mb-6">
+                                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">
 
-                                {report.type}
+                                    {report.type}
 
-                            </h2>
+                                </h2>
+                                {report.department && (
+                                    <span className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-blue-900/20">
+                                        {report.department}
+                                    </span>
+                                )}
+                            </div>
 
                             {/* Location */}
                             <p>
@@ -160,9 +169,9 @@ function AdminReports() {
                             </p>
 
                             {/* Verification Votes */}
-                            <div className="mt-4 flex flex-wrap gap-4">
+                            <div className="mt-6 flex flex-wrap gap-4">
 
-                                <div className="bg-green-700 px-4 py-2 rounded-xl">
+                                <div className="bg-green-500/20 text-green-400 border border-green-500/30 px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-green-900/20">
 
                                     ✅ Yes:
                                     {" "}
@@ -170,7 +179,7 @@ function AdminReports() {
 
                                 </div>
 
-                                <div className="bg-red-700 px-4 py-2 rounded-xl">
+                                <div className="bg-red-500/20 text-red-400 border border-red-500/30 px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-red-900/20">
 
                                     ❌ No:
                                     {" "}
@@ -178,7 +187,7 @@ function AdminReports() {
 
                                 </div>
 
-                                <div className="bg-yellow-600 px-4 py-2 rounded-xl">
+                                <div className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-yellow-900/20">
 
                                     🤔 Unsure:
                                     {" "}
@@ -289,7 +298,7 @@ function AdminReports() {
                                     deleteReport(report.id)
                                 }
 
-                                className="mt-6 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-xl font-bold"
+                                className="btn-premium mt-8 w-full bg-gradient-to-r from-red-700 to-red-900 hover:from-red-600 hover:to-red-800 px-6 py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-red-900/50"
 
                             >
 
@@ -303,6 +312,7 @@ function AdminReports() {
 
                 )}
 
+            </div>
             </div>
 
         </div>
