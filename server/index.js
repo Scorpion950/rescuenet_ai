@@ -17,6 +17,10 @@ const {
 } = require("@google/generative-ai");
 
 /* ROUTES */
+
+const authRoutes =
+    require("./routes/authRoutes");
+
 const responderRoutes =
     require("./routes/responderRoutes");
 
@@ -72,6 +76,11 @@ app.use(limiter);
 app.use(
     "/",
     responderRoutes
+);
+
+app.use(
+    "/",
+    authRoutes
 );
 
 app.use(

@@ -6,12 +6,24 @@ const router =
 
 const {
 
+    responderAuth,
+
+} = require(
+
+    "../middleware/authMiddleware"
+
+);
+
+const {
+
     getResponderIncidents,
     deployIncident,
     resolveIncident,
 
 } = require(
+
     "../controllers/responderController"
+
 );
 
 /* Get incidents */
@@ -19,23 +31,29 @@ router.get(
 
     "/responder-incidents/:type",
 
+    responderAuth,
+
     getResponderIncidents
 
 );
 
-/* Deploy */
+/* Deploy incident */
 router.put(
 
     "/deploy-incident/:id",
+
+    responderAuth,
 
     deployIncident
 
 );
 
-/* Resolve */
+/* Resolve incident */
 router.put(
 
     "/resolve-incident/:id",
+
+    responderAuth,
 
     resolveIncident
 

@@ -1,7 +1,9 @@
 const db =
     require("../config/firebase");
 
+/* Update SOS Incident Status */
 const updateIncidentStatus =
+
     async (req, res) => {
 
         try {
@@ -13,49 +15,59 @@ const updateIncidentStatus =
 
             } = req.body;
 
+            // Valid statuses
+            const allowedStatuses = [
+
+                "PENDING",
+                "DEPLOYED",
+                "RESOLVED",
+
+            ];
+
+            // Validation
             if (
 
-                !incidentId ||
-
-                !status
+                !allowedStatuses.includes(
+                    status
+                )
 
             ) {
 
                 return res.status(400).json({
 
                     error:
-                        "Missing fields",
+                        "Invalid status",
 
                 });
 
             }
 
+            // Update Firestore
             await db
-
                 .collection("sosAlerts")
-
                 .doc(incidentId)
-
                 .update({
 
                     status,
 
                 });
 
-            return res.json({
+            res.json({
 
                 success: true,
 
                 message:
-                    "Status updated",
+                    `Incident marked as ${status}`,
 
             });
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
             console.error(error);
 
-            return res.status(500).json({
+            res.status(500).json({
 
                 error:
                     "Failed to update status",

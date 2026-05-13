@@ -1,5 +1,5 @@
-import ResponderDashboard from
-    "../../components/ResponderDashboard";
+import ResponderDashboard
+    from "../../components/ResponderDashboard";
 
 function AmbulanceDashboard() {
 

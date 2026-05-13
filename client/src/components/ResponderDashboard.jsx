@@ -4,10 +4,14 @@ import {
 } from "react";
 
 import {
+    API_BASE_URL,
+} from "../utils/constants";
 
+import {
     updateIncidentStatus,
-
 } from "../services/statusService";
+
+import toast from "react-hot-toast";
 
 function ResponderDashboard({
 
@@ -18,32 +22,87 @@ function ResponderDashboard({
     const [incidents, setIncidents] =
         useState([]);
 
+    const [loading, setLoading] =
+        useState(true);
+
     // Fetch incidents
     useEffect(() => {
 
-        fetch(
+        const fetchIncidents = async () => {
 
-            `http://localhost:5000/responder/${responderType}`
+            try {
 
-        )
+                const response =
 
-            .then((res) => res.json())
+                    await fetch(
 
-            .then((data) => {
+                        `${API_BASE_URL}/responder-incidents/${responderType}`,
+
+                        {
+
+                            headers: {
+
+                                "x-responder-key":
+
+                                    localStorage.getItem(
+                                        "responderType"
+                                    ),
+
+                            },
+
+                        }
+
+                    );
+
+                const data =
+                    await response.json();
 
                 setIncidents(
                     data.incidents || []
                 );
 
-            })
+            }
 
-            .catch(console.error);
+            catch (error) {
+
+                console.error(error);
+
+                toast.error(
+                    "Failed to load incidents"
+                );
+
+            }
+
+            finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        fetchIncidents();
 
     }, [responderType]);
 
+    // Loading State
+    if (loading) {
+
+        return (
+
+            <div className="min-h-screen flex justify-center items-center text-white text-2xl">
+
+                Loading Dashboard...
+
+            </div>
+
+        );
+
+    }
+
     return (
 
-        <div className="p-6">
+        <div className="p-6 text-white">
 
             <h1 className="text-5xl font-bold mb-8">
 
@@ -55,9 +114,19 @@ function ResponderDashboard({
 
                 {incidents.length === 0 ? (
 
-                    <div className="bg-slate-800 p-6 rounded-2xl text-center text-gray-300">
+                    <div className="bg-slate-800 p-10 rounded-2xl text-center text-gray-300 shadow-xl">
 
-                        No active incidents assigned.
+                        <h2 className="text-2xl font-bold mb-3">
+
+                            No Active Incidents
+
+                        </h2>
+
+                        <p>
+
+                            Everything looks safe right now.
+
+                        </p>
 
                     </div>
 
@@ -115,13 +184,13 @@ function ResponderDashboard({
 
                                 <p>
 
-                                    {incident.location}
+                                    {incident.location || "Unknown Area"}
 
                                 </p>
 
                             </div>
 
-                            {/* Assigned Stations */}
+                            {/* Stations */}
                             <div className="mb-4">
 
                                 <p className="font-bold mb-2">
@@ -175,7 +244,23 @@ function ResponderDashboard({
 
                                 </span>{" "}
 
-                                <span className="text-yellow-400 font-bold">
+                                <span
+
+                                    className={
+
+                                        incident.status === "RESOLVED"
+
+                                            ? "bg-green-600 px-3 py-1 rounded-full text-sm font-bold"
+
+                                            : incident.status === "DEPLOYED"
+
+                                                ? "bg-blue-600 px-3 py-1 rounded-full text-sm font-bold"
+
+                                                : "bg-yellow-400 text-black px-3 py-1 rounded-full text-sm font-bold"
+
+                                    }
+
+                                >
 
                                     {incident.status || "PENDING"}
 
@@ -183,7 +268,7 @@ function ResponderDashboard({
 
                             </div>
 
-                            {/* Action Buttons */}
+                            {/* Buttons */}
                             <div className="flex gap-4 mb-4">
 
                                 <button
@@ -198,11 +283,33 @@ function ResponderDashboard({
 
                                         );
 
-                                        window.location.reload();
+                                        setIncidents((prev) =>
+
+                                            prev.map((item) =>
+
+                                                item.id === incident.id
+
+                                                    ? {
+
+                                                        ...item,
+
+                                                        status: "DEPLOYED",
+
+                                                    }
+
+                                                    : item
+
+                                            )
+
+                                        );
+
+                                        toast.success(
+                                            "Incident Deployed"
+                                        );
 
                                     }}
 
-                                    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold"
+                                    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl font-bold transition"
 
                                 >
 
@@ -222,11 +329,33 @@ function ResponderDashboard({
 
                                         );
 
-                                        window.location.reload();
+                                        setIncidents((prev) =>
+
+                                            prev.map((item) =>
+
+                                                item.id === incident.id
+
+                                                    ? {
+
+                                                        ...item,
+
+                                                        status: "RESOLVED",
+
+                                                    }
+
+                                                    : item
+
+                                            )
+
+                                        );
+
+                                        toast.success(
+                                            "Incident Resolved"
+                                        );
 
                                     }}
 
-                                    className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl font-bold"
+                                    className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl font-bold transition"
 
                                 >
 

@@ -98,25 +98,32 @@ function AdminOverview() {
 
     // Statistics
     const severeReports =
+
         reports.filter(
 
-            (report) =>
+            report =>
 
                 report.severity ===
                 "HIGH"
 
+                ||
+
+                report.severity ===
+                "CRITICAL"
+
         );
+
 
     const verifiedReports =
+
         reports.filter(
 
-            (report) =>
+            report =>
 
                 report.status ===
-                "VERIFIED"
+                "VERIFIED & LIVE"
 
         );
-
     return (
 
         <div>

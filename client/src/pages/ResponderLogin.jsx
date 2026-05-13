@@ -6,6 +6,13 @@ import {
     useNavigate,
 } from "react-router-dom";
 
+import toast
+    from "react-hot-toast";
+
+import {
+    API_BASE_URL,
+} from "../utils/constants";
+
 function ResponderLogin() {
 
     const navigate =
@@ -17,86 +24,113 @@ function ResponderLogin() {
     const [password, setPassword] =
         useState("");
 
-    const handleLogin = () => {
+    // Login
+    const handleLogin = async () => {
 
-        // Police
-        if (
+        try {
 
-            department === "Police" &&
+            const response =
 
-            password === "police123"
+                await fetch(
 
-        ) {
+                    `${API_BASE_URL}/responder-login`,
 
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                        },
+
+                        body: JSON.stringify({
+
+                            department,
+
+                            password,
+
+                        }),
+
+                    }
+
+                );
+
+            const data =
+                await response.json();
+
+            // Error
+            if (data.error) {
+
+                toast.error(
+                    data.error
+                );
+
+                return;
+
+            }
+
+            // Save responder type
             localStorage.setItem(
 
                 "responderType",
 
+                data.responderType
+
+            );
+
+            toast.success(
+                "Login Successful"
+            );
+
+            // Redirect
+            if (
+
+                data.responderType ===
                 "Police"
 
-            );
+            ) {
 
-            navigate(
-                "/responder/police"
-            );
+                navigate(
+                    "/responder/police"
+                );
 
-            return;
+            }
 
-        }
+            else if (
 
-        // Ambulance
-        if (
-
-            department === "Ambulance" &&
-
-            password === "ambulance123"
-
-        ) {
-
-            localStorage.setItem(
-
-                "responderType",
-
+                data.responderType ===
                 "Ambulance"
 
-            );
+            ) {
 
-            navigate(
-                "/responder/ambulance"
-            );
+                navigate(
+                    "/responder/ambulance"
+                );
 
-            return;
+            }
 
-        }
+            else {
 
-        // Fire
-        if (
+                navigate(
+                    "/responder/fire"
+                );
 
-            department === "Fire Brigade" &&
-
-            password === "fire123"
-
-        ) {
-
-            localStorage.setItem(
-
-                "responderType",
-
-                "Fire Brigade"
-
-            );
-
-            navigate(
-                "/responder/fire"
-            );
-
-            return;
+            }
 
         }
 
-        alert(
-            "Invalid credentials"
-        );
+        catch (error) {
+
+            console.error(error);
+
+            toast.error(
+                "Login failed"
+            );
+
+        }
 
     };
 

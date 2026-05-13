@@ -22,7 +22,15 @@ import {
     onSnapshot,
 } from "firebase/firestore";
 
+import toast from "react-hot-toast";
+
 import { db } from "../firebase";
+
+import {
+
+    API_BASE_URL,
+
+} from "../utils/constants";
 
 function LiveMap() {
 
@@ -31,64 +39,79 @@ function LiveMap() {
 
     // Verify Incident
     const verifyIncident = async (
+
         reportId,
         voteType
+
     ) => {
 
         try {
 
-            // Get already voted reports
-            const votedReports = JSON.parse(
+            // Previous vote
+            const previousVote =
 
                 localStorage.getItem(
-                    "votedReports"
-                ) || "[]"
 
-            );
+                    `vote_${reportId}`
 
-            // Prevent duplicate voting
-            if (
-
-                votedReports.includes(
-                    reportId
-                )
-
-            ) {
-
-                alert(
-                    "You already voted for this incident."
                 );
 
-                return;
+            const response =
 
-            }
+                await fetch(
 
-            // Send vote to backend
-            await sendVerificationVote(
+                    `${API_BASE_URL}/verify-incident`,
 
-                reportId,
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                        },
+
+                        body: JSON.stringify({
+
+                            reportId,
+                            voteType,
+                            previousVote,
+
+                        }),
+
+                    }
+
+                );
+
+            const data =
+                await response.json();
+
+            // Save latest vote
+            localStorage.setItem(
+
+                `vote_${reportId}`,
+
                 voteType
 
             );
 
-            // Store vote locally
-            votedReports.push(
-                reportId
+            toast.success(
+                "Vote Updated"
             );
 
-            localStorage.setItem(
 
-                "votedReports",
 
-                JSON.stringify(
-                    votedReports
-                )
+        }
 
-            );
-
-        } catch (error) {
+        catch (error) {
 
             console.error(error);
+
+            toast.error(
+                "Vote failed"
+            );
 
         }
 

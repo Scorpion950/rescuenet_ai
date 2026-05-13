@@ -16,33 +16,83 @@ function useNearbyAlerts() {
 
     useEffect(() => {
 
-        navigator.geolocation.watchPosition(
+        let watchId;
 
-            async (position) => {
+        if (
 
-                try {
+            navigator.geolocation
 
-                    const data =
-                        await fetchNearbyIncidents(
+        ) {
 
-                            position.coords.latitude,
-                            position.coords.longitude
+            watchId =
 
-                        );
+                navigator.geolocation
+                    .watchPosition(
 
-                    setNearbyAlerts(
-                        data.incidents || []
+                        async (position) => {
+
+                            try {
+
+                                const latitude =
+                                    position.coords.latitude;
+
+                                const longitude =
+                                    position.coords.longitude;
+
+                                const data =
+                                    await fetchNearbyIncidents(
+
+                                        latitude,
+                                        longitude
+
+                                    );
+
+                                setNearbyAlerts(data);
+
+                            } catch (error) {
+
+                                console.error(error);
+
+                            }
+
+                        },
+
+                        (error) => {
+
+                            console.error(error);
+
+                        },
+
+                        {
+
+                            enableHighAccuracy:
+                                false,
+
+                            timeout: 5000,
+
+                            maximumAge: 60000,
+
+                        }
+
                     );
 
-                } catch (error) {
+        }
 
-                    console.error(error);
+        // Cleanup
+        return () => {
 
-                }
+            if (
+
+                watchId !== undefined
+
+            ) {
+
+                navigator.geolocation
+                    .clearWatch(watchId);
 
             }
 
-        );
+        };
 
     }, []);
 

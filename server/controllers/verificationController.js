@@ -1,22 +1,27 @@
-const db = require(
-    "../config/firebase"
-);
+const db =
+    require("../config/firebase");
 
 const verifyIncident = async (
+
     req,
     res
+
 ) => {
 
     try {
 
         const {
+
             reportId,
             voteType,
+            previousVote,
+
         } = req.body;
 
-        const reportRef = db
-            .collection("reports")
-            .doc(reportId);
+        const reportRef =
+
+            db.collection("reports")
+                .doc(reportId);
 
         const docSnapshot =
             await reportRef.get();
@@ -24,7 +29,10 @@ const verifyIncident = async (
         if (!docSnapshot.exists) {
 
             return res.status(404).json({
-                error: "Report not found",
+
+                error:
+                    "Report not found",
+
             });
 
         }
@@ -41,7 +49,26 @@ const verifyIncident = async (
         let verifiedUnsure =
             reportData.verifiedUnsure || 0;
 
-        // Vote handling
+        // REMOVE OLD VOTE
+        if (previousVote === "yes") {
+
+            verifiedYes--;
+
+        }
+
+        else if (previousVote === "no") {
+
+            verifiedNo--;
+
+        }
+
+        else if (previousVote === "unsure") {
+
+            verifiedUnsure--;
+
+        }
+
+        // ADD NEW VOTE
         if (voteType === "yes") {
 
             verifiedYes++;
@@ -60,12 +87,24 @@ const verifyIncident = async (
 
         }
 
-        // Status Logic
+        // Prevent negatives
+        verifiedYes =
+            Math.max(0, verifiedYes);
+
+        verifiedNo =
+            Math.max(0, verifiedNo);
+
+        verifiedUnsure =
+            Math.max(0, verifiedUnsure);
+
+        // STATUS LOGIC
         let status = "PENDING";
 
         if (
+
             verifiedYes >= 3 &&
             verifiedYes > verifiedNo
+
         ) {
 
             status =
@@ -74,14 +113,17 @@ const verifyIncident = async (
         }
 
         else if (
-            verifiedNo >= verifiedYes
+
+            verifiedNo > verifiedYes
+
         ) {
 
-            status = "NOT SURE";
+            status =
+                "NOT SURE";
 
         }
 
-        // Update Firestore
+        // UPDATE FIRESTORE
         await reportRef.update({
 
             verifiedYes,
@@ -98,7 +140,9 @@ const verifyIncident = async (
 
         });
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         console.error(error);
 
@@ -114,5 +158,7 @@ const verifyIncident = async (
 };
 
 module.exports = {
+
     verifyIncident,
+
 };

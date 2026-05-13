@@ -67,6 +67,8 @@ import AmbulanceDashboard from
 import FireDashboard from
   "./pages/responder/FireDashboard";
 
+import NotFound from "./pages/NotFound";
+
 function App() {
 
   return (
@@ -238,6 +240,7 @@ function App() {
 
           />
 
+
           {/* Fire */}
           <Route
 
@@ -257,6 +260,12 @@ function App() {
 
             }
 
+          />
+
+          {/* Not Found */}
+          <Route
+            path="*"
+            element={<NotFound />}
           />
 
         </Route>

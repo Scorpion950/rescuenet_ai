@@ -1,9 +1,26 @@
 import {
     Outlet,
     NavLink,
+    useNavigate,
 } from "react-router-dom";
 
 function AdminLayout() {
+
+    const navigate =
+        useNavigate();
+
+    // Logout
+    const logout = () => {
+
+        localStorage.removeItem(
+            "isAdmin"
+        );
+
+        navigate(
+            "/admin-access"
+        );
+
+    };
 
     return (
 
@@ -18,10 +35,12 @@ function AdminLayout() {
 
                 </h1>
 
-                <div className="flex gap-6 text-lg">
+                <div className="flex items-center gap-6 text-lg">
 
                     <NavLink
+
                         to="/admin"
+
                         className={({ isActive }) =>
 
                             isActive
@@ -29,6 +48,7 @@ function AdminLayout() {
                                 : "text-gray-200 hover:text-white"
 
                         }
+
                     >
 
                         Overview
@@ -36,7 +56,9 @@ function AdminLayout() {
                     </NavLink>
 
                     <NavLink
+
                         to="/admin/map"
+
                         className={({ isActive }) =>
 
                             isActive
@@ -44,6 +66,7 @@ function AdminLayout() {
                                 : "text-gray-200 hover:text-white"
 
                         }
+
                     >
 
                         Live Map
@@ -51,7 +74,9 @@ function AdminLayout() {
                     </NavLink>
 
                     <NavLink
+
                         to="/admin/sos"
+
                         className={({ isActive }) =>
 
                             isActive
@@ -59,6 +84,7 @@ function AdminLayout() {
                                 : "text-gray-200 hover:text-white"
 
                         }
+
                     >
 
                         SOS Alerts
@@ -66,7 +92,9 @@ function AdminLayout() {
                     </NavLink>
 
                     <NavLink
+
                         to="/admin/reports"
+
                         className={({ isActive }) =>
 
                             isActive
@@ -74,11 +102,25 @@ function AdminLayout() {
                                 : "text-gray-200 hover:text-white"
 
                         }
+
                     >
 
                         Reports
 
                     </NavLink>
+
+                    {/* Logout Button */}
+                    <button
+
+                        onClick={logout}
+
+                        className="bg-red-900 hover:bg-red-950 px-5 py-2 rounded-xl font-bold transition"
+
+                    >
+
+                        Logout
+
+                    </button>
 
                 </div>
 

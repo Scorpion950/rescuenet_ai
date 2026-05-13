@@ -6,6 +6,13 @@ import {
     useNavigate,
 } from "react-router-dom";
 
+import toast
+    from "react-hot-toast";
+
+import {
+    API_BASE_URL,
+} from "../utils/constants";
+
 function AdminLogin() {
 
     const navigate =
@@ -14,25 +21,76 @@ function AdminLogin() {
     const [adminKey, setAdminKey] =
         useState("");
 
-    const handleLogin = () => {
+    // Login
+    const handleLogin = async () => {
 
-        // Temporary frontend check
-        if (
-            adminKey ===
-            "RESCUENET_ADMIN"
-        ) {
+        try {
 
+            const response =
+
+                await fetch(
+
+                    `${API_BASE_URL}/admin-login`,
+
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                        },
+
+                        body: JSON.stringify({
+
+                            password:
+                                adminKey,
+
+                        }),
+
+                    }
+
+                );
+
+            const data =
+                await response.json();
+
+            // Invalid
+            if (data.error) {
+
+                toast.error(
+                    data.error
+                );
+
+                return;
+
+            }
+
+            // Save admin session
             localStorage.setItem(
+
                 "isAdmin",
+
                 "true"
+
+            );
+
+            toast.success(
+                "Admin Login Successful"
             );
 
             navigate("/admin");
 
-        } else {
+        }
 
-            alert(
-                "Invalid Admin Key"
+        catch (error) {
+
+            console.error(error);
+
+            toast.error(
+                "Login failed"
             );
 
         }
@@ -60,9 +118,11 @@ function AdminLogin() {
                     value={adminKey}
 
                     onChange={(e) =>
+
                         setAdminKey(
                             e.target.value
                         )
+
                     }
 
                     className="w-full p-3 rounded-xl bg-slate-700 text-white mb-4"

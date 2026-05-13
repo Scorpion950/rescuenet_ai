@@ -211,11 +211,7 @@ function AdminReports() {
 
                                             (media, index) => (
 
-                                                media.includes(".mp4") ||
-
-                                                    media.includes(".webm") ||
-
-                                                    media.includes(".mov")
+                                                media.includes("/video/")
 
                                                     ? (
 

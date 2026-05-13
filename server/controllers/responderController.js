@@ -1,18 +1,20 @@
 const db =
-    require(
-        "../config/firebase"
-    );
+    require("../config/firebase");
 
-/* Get responder incidents */
+/* Get incidents for responder */
 const getResponderIncidents =
+
     async (req, res) => {
 
         try {
 
-            const type =
-                req.params.type;
+            const {
+                type,
+            } = req.params;
 
+            // Fetch SOS alerts
             const snapshot =
+
                 await db
                     .collection("sosAlerts")
                     .get();
@@ -24,17 +26,17 @@ const getResponderIncidents =
                 const data =
                     doc.data();
 
+                // Match responder type
                 if (
 
-                    data.services?.includes(
-                        type
-                    )
+                    data.services?.includes(type)
 
                 ) {
 
                     incidents.push({
 
                         id: doc.id,
+
                         ...data,
 
                     });
@@ -43,16 +45,24 @@ const getResponderIncidents =
 
             });
 
-            res.json(incidents);
+            res.json({
 
-        } catch (error) {
+                success: true,
 
-            console.log(error);
+                incidents,
+
+            });
+
+        }
+
+        catch (error) {
+
+            console.error(error);
 
             res.status(500).json({
 
                 error:
-                    "Failed to fetch incidents",
+                    "Failed to fetch responder incidents",
 
             });
 
@@ -60,44 +70,43 @@ const getResponderIncidents =
 
     };
 
-/* Deploy */
+/* Deploy Incident */
 const deployIncident =
+
     async (req, res) => {
 
         try {
 
-            const id =
-                req.params.id;
+            const {
+                id,
+            } = req.params;
 
             await db
-                .collection(
-                    "sosAlerts"
-                )
+                .collection("sosAlerts")
                 .doc(id)
                 .update({
 
                     status:
                         "DEPLOYED",
 
-                    deployed: true,
-
-                    deployedAt:
-                        new Date(),
-
                 });
 
             res.json({
+
                 success: true,
+
             });
 
-        } catch (error) {
+        }
 
-            console.log(error);
+        catch (error) {
+
+            console.error(error);
 
             res.status(500).json({
 
                 error:
-                    "Deploy failed",
+                    "Deployment failed",
 
             });
 
@@ -105,39 +114,38 @@ const deployIncident =
 
     };
 
-/* Resolve */
+/* Resolve Incident */
 const resolveIncident =
+
     async (req, res) => {
 
         try {
 
-            const id =
-                req.params.id;
+            const {
+                id,
+            } = req.params;
 
             await db
-                .collection(
-                    "sosAlerts"
-                )
+                .collection("sosAlerts")
                 .doc(id)
                 .update({
 
                     status:
                         "RESOLVED",
 
-                    resolved: true,
-
-                    resolvedAt:
-                        new Date(),
-
                 });
 
             res.json({
+
                 success: true,
+
             });
 
-        } catch (error) {
+        }
 
-            console.log(error);
+        catch (error) {
+
+            console.error(error);
 
             res.status(500).json({
 

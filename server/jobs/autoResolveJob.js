@@ -1,13 +1,16 @@
-const cron = require("node-cron");
+const cron =
+    require("node-cron");
 
-const db = require(
-    "../config/firebase"
-);
+const db =
+    require(
+        "../config/firebase"
+    );
 
 // Auto Resolve Every 5 Minutes
 const startAutoResolveJob = () => {
 
     cron.schedule(
+
         "*/5 * * * *",
 
         async () => {
@@ -23,69 +26,118 @@ const startAutoResolveJob = () => {
                         .collection("reports")
                         .get();
 
-                const now = Date.now();
+                const now =
+                    Date.now();
 
-                reportsSnapshot.forEach(
-                    async (doc) => {
+                // Proper async loop
+                for (
 
-                        const report =
-                            doc.data();
+                    const doc of reportsSnapshot.docs
 
-                        // Skip resolved
-                        if (
-                            report.status ===
-                            "RESOLVED"
-                        ) {
-                            return;
-                        }
+                ) {
 
-                        // Timestamp handling
-                        const createdAt =
-                            report.createdAt?._seconds
-                                ? report.createdAt._seconds
-                                * 1000
-                                : new Date(
-                                    report.createdAt
-                                ).getTime();
+                    const report =
+                        doc.data();
 
-                        const THIRTY_MINUTES =
-                            30 * 60 * 1000;
+                    // Skip resolved incidents
+                    if (
 
-                        const expired =
-                            now - createdAt
-                            > THIRTY_MINUTES;
+                        report.status ===
+                        "RESOLVED"
 
-                        // Auto resolve
-                        if (expired) {
+                    ) {
 
-                            await db
-                                .collection(
-                                    "reports"
-                                )
-                                .doc(doc.id)
-                                .update({
-
-                                    status:
-                                        "RESOLVED",
-
-                                });
-
-                            console.log(
-
-                                `Resolved: ${doc.id}`
-
-                            );
-
-                        }
+                        continue;
 
                     }
-                );
+
+                    let createdAt;
+
+                    // Firestore Timestamp
+                    if (
+
+                        report.createdAt?._seconds
+
+                    ) {
+
+                        createdAt =
+
+                            report.createdAt
+                                ._seconds * 1000;
+
+                    }
+
+                    // Normal Date String
+                    else {
+
+                        createdAt =
+                            new Date(
+
+                                report.createdAt
+
+                            ).getTime();
+
+                    }
+
+                    // Invalid timestamp safety
+                    if (
+
+                        !createdAt ||
+
+                        isNaN(createdAt)
+
+                    ) {
+
+                        continue;
+
+                    }
+
+                    const THIRTY_MINUTES =
+
+                        30 * 60 * 1000;
+
+                    const expired =
+
+                        now - createdAt >
+
+                        THIRTY_MINUTES;
+
+                    // Auto Resolve
+                    if (expired) {
+
+                        await db
+
+                            .collection(
+                                "reports"
+                            )
+
+                            .doc(doc.id)
+
+                            .update({
+
+                                status:
+                                    "RESOLVED",
+
+                            });
+
+                        console.log(
+
+                            `Resolved: ${doc.id}`
+
+                        );
+
+                    }
+
+                }
 
             } catch (error) {
 
                 console.error(
+
                     "Auto resolve error:",
+
                     error
+
                 );
 
             }
@@ -97,5 +149,7 @@ const startAutoResolveJob = () => {
 };
 
 module.exports = {
+
     startAutoResolveJob,
+
 };

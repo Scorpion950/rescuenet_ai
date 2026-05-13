@@ -55,7 +55,7 @@ function SOS() {
 
     };
 
-    const sendSOS = async (service) => {
+    const sendSOS = async () => {
 
         try {
 

@@ -6,6 +6,16 @@ const router =
 
 const {
 
+    adminAuth,
+
+} = require(
+
+    "../middleware/authMiddleware"
+
+);
+
+const {
+
     updateIncidentStatus,
 
 } = require(
@@ -14,9 +24,12 @@ const {
 
 );
 
+/* Protected Admin Status Update */
 router.post(
 
     "/incident/status",
+
+    adminAuth,
 
     updateIncidentStatus
 

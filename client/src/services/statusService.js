@@ -2,7 +2,9 @@ import {
     API_BASE_URL,
 } from "../utils/constants";
 
+/* Update Incident Status */
 export const updateIncidentStatus =
+
     async (
 
         incidentId,
@@ -13,6 +15,7 @@ export const updateIncidentStatus =
         try {
 
             const response =
+
                 await fetch(
 
                     `${API_BASE_URL}/incident/status`,
@@ -25,6 +28,13 @@ export const updateIncidentStatus =
 
                             "Content-Type":
                                 "application/json",
+
+                            "x-admin-key":
+                                localStorage.getItem(
+                                    "isAdmin"
+                                ) === "true"
+                                    ? "authorized"
+                                    : process.env.ADMIN_PASSWORD,
 
                         },
 
@@ -41,16 +51,11 @@ export const updateIncidentStatus =
 
             return await response.json();
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
             console.error(error);
-
-            return {
-
-                error:
-                    "Failed to update status",
-
-            };
 
         }
 
