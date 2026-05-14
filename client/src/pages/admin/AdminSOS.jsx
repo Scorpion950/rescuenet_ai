@@ -105,11 +105,11 @@ function AdminSOS() {
 
                 </h1>
 
-            <div className="grid gap-6">
+            <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8 animate-fade-in-up">
 
                 {sosAlerts.length === 0 ? (
 
-                    <div className="glass-panel p-10 rounded-3xl text-center text-gray-300 shadow-2xl border border-white/10">
+                    <div className="glass-panel p-10 rounded-3xl text-center text-gray-300 shadow-2xl border border-white/10 break-inside-avoid">
 
                         <h2 className="text-2xl font-bold">No active SOS alerts.</h2>
 
@@ -123,7 +123,7 @@ function AdminSOS() {
 
                             key={alert.id}
 
-                            className="glass-panel p-8 rounded-3xl shadow-2xl border border-red-500/40 relative overflow-hidden group"
+                            className="glass-panel p-8 rounded-3xl shadow-2xl border border-red-500/40 relative overflow-hidden group break-inside-avoid"
 
                         >
                             {/* Animated Background Glow */}

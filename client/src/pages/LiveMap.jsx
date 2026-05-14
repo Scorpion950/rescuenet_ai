@@ -285,6 +285,27 @@ function LiveMap({ isAdmin = false }) {
                     className="h-full w-full"
                 >
 
+                    {/* FLOATING MAP LEGEND */}
+                    {showDangerZones && (
+                        <div className="absolute bottom-6 left-6 z-[1000] glass-panel p-4 rounded-xl border border-white/10 shadow-2xl animate-fade-in-up pointer-events-none">
+                            <h3 className="font-bold text-lg mb-2 text-white drop-shadow-md">Hazard Zones</h3>
+                            <div className="space-y-2 text-sm font-semibold">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full bg-red-500 opacity-60"></div>
+                                    <span className="text-red-200">1 KM (Critical)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full bg-orange-500 opacity-50"></div>
+                                    <span className="text-orange-200">500m (High)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full bg-yellow-500 opacity-40"></div>
+                                    <span className="text-yellow-200">250m (Medium)</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <TileLayer
 
                         attribution='&copy; OpenStreetMap contributors'
