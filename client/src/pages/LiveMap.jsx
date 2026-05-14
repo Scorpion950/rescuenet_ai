@@ -15,12 +15,31 @@ import {
     TileLayer,
     Marker,
     Popup,
+    useMap,
 } from "react-leaflet";
+import L from "leaflet";
 
 import {
     collection,
     onSnapshot,
 } from "firebase/firestore";
+
+const userLocationIcon = new L.DivIcon({
+    className: 'user-location-marker',
+    html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite;"></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+});
+
+function MapUpdater({ center }) {
+    const map = useMap();
+    useEffect(() => {
+        if (center) {
+            map.flyTo(center, 13, { duration: 2 });
+        }
+    }, [center, map]);
+    return null;
+}
 
 import MarkerClusterGroup from 'react-leaflet-cluster';
 
@@ -34,10 +53,13 @@ import {
 
 } from "../utils/constants";
 
-function LiveMap() {
+function LiveMap({ isAdmin = false }) {
 
     const [reports, setReports] =
         useState([]);
+        
+    const [userLocation, setUserLocation] = 
+        useState(null);
 
     // Verify Incident
     const verifyIncident = async (
@@ -145,6 +167,13 @@ function LiveMap() {
                         });
 
                     });
+                    
+                    // Sort by newest first
+                    fetchedReports.sort((a, b) => {
+                        const timeA = a.createdAt?.seconds || 0;
+                        const timeB = b.createdAt?.seconds || 0;
+                        return timeB - timeA;
+                    });
 
                     setReports(
                         fetchedReports
@@ -156,6 +185,25 @@ function LiveMap() {
 
         return () => unsubscribe();
 
+    }, []);
+
+    // Get User Location
+    useEffect(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserLocation([
+                        position.coords.latitude,
+                        position.coords.longitude
+                    ]);
+                },
+                (error) => {
+                    if (error.code !== error.PERMISSION_DENIED) {
+                        console.warn("Geolocation error:", error);
+                    }
+                }
+            );
+        }
     }, []);
 
     return (
@@ -214,6 +262,20 @@ function LiveMap() {
                         noWrap={true}
 
                     />
+                    
+                    {userLocation && (
+                        <MapUpdater center={userLocation} />
+                    )}
+
+                    {userLocation && (
+                        <Marker 
+                            position={userLocation} 
+                            icon={userLocationIcon}
+                            zIndexOffset={1000}
+                        >
+                            <Popup>You are here</Popup>
+                        </Marker>
+                    )}
 
                     <MarkerClusterGroup
                         chunkedLoading
@@ -221,7 +283,7 @@ function LiveMap() {
                     >
                         {/* INCIDENT MARKERS */}
                         {reports
-                            .filter((report) => report.status !== "RESOLVED")
+                            .filter((report) => isAdmin || report.status !== "RESOLVED")
                             .map((report) => (
 
                             <Marker

@@ -46,6 +46,14 @@ function useNearbyAlerts() {
                                         longitude
 
                                     );
+                                    
+                                if (data && data.length > 0) {
+                                    data.sort((a, b) => {
+                                        const timeA = a.createdAt?._seconds || a.createdAt?.seconds || 0;
+                                        const timeB = b.createdAt?._seconds || b.createdAt?.seconds || 0;
+                                        return timeB - timeA;
+                                    });
+                                }
 
                                 setNearbyAlerts(data);
 

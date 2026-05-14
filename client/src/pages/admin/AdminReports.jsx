@@ -75,6 +75,12 @@ function AdminReports() {
 
                     });
 
+                    fetchedReports.sort((a, b) => {
+                        const timeA = a.createdAt?.seconds || 0;
+                        const timeB = b.createdAt?.seconds || 0;
+                        return timeB - timeA;
+                    });
+
                     setReports(
                         fetchedReports
                     );

@@ -2,7 +2,7 @@ import LiveMap from "../LiveMap";
 
 function AdminMap() {
 
-    return <LiveMap />;
+    return <LiveMap isAdmin={true} />;
 
 }
 
