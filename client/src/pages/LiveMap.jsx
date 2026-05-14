@@ -42,6 +42,23 @@ function MapUpdater({ center }) {
     return null;
 }
 
+function LocateControl({ location }) {
+    const map = useMap();
+    return (
+        <button 
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (location) map.flyTo(location, 16, { animate: true, duration: 1.5 });
+            }}
+            className="absolute bottom-24 right-6 z-[1000] bg-slate-900/80 backdrop-blur-md text-blue-400 p-4 rounded-full shadow-2xl shadow-blue-900/30 border border-blue-500/30 hover:bg-slate-800 hover:scale-110 transition flex items-center justify-center"
+            title="Locate Me"
+        >
+            <span className="text-2xl drop-shadow-lg">🎯</span>
+        </button>
+    );
+}
+
 import MarkerClusterGroup from 'react-leaflet-cluster';
 
 import toast from "react-hot-toast";
@@ -317,7 +334,10 @@ function LiveMap({ isAdmin = false }) {
                     />
                     
                     {userLocation && (
-                        <MapUpdater center={userLocation} />
+                        <>
+                            <MapUpdater center={userLocation} />
+                            <LocateControl location={userLocation} />
+                        </>
                     )}
 
                     {userLocation && (

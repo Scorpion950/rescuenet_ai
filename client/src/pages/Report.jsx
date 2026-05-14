@@ -24,8 +24,8 @@ function Report() {
     const [loading, setLoading] =
         useState(false);
 
-    const fileInputRef =
-        useRef(null);
+    const fileInputRef = useRef(null);
+    const cameraInputRef = useRef(null);
 
     const [formData, setFormData] =
         useState({
@@ -135,6 +135,23 @@ function Report() {
 
         });
 
+    };
+
+    const handleMediaChange = (e) => {
+        const files = Array.from(e.target.files);
+        
+        // Prevent exceeding 3 files total
+        const totalFiles = formData.media.length + files.length;
+        if (totalFiles > 3) {
+            alert("Maximum 3 files allowed total.");
+            e.target.value = "";
+            return;
+        }
+
+        setFormData({
+            ...formData,
+            media: [...formData.media, ...files],
+        });
     };
 
     // Submit report
@@ -296,11 +313,8 @@ function Report() {
             }));
 
             // Reset file input
-            if (fileInputRef.current) {
-
-                fileInputRef.current.value = "";
-
-            }
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            if (cameraInputRef.current) cameraInputRef.current.value = "";
 
         } catch (error) {
 
@@ -417,53 +431,58 @@ function Report() {
 
                     </div>
 
-                    {/* Upload */}
+                    {/* Media Upload Options */}
                     <div>
-
-                        <label className="block mb-2 text-gray-300 font-medium">
-
-                            Upload Images / Videos (Max 3)
-
+                        <label className="block mb-3 text-gray-300 font-medium">
+                            Media Evidence (Max 3 Files)
                         </label>
-
+                        
+                        {/* Hidden Inputs */}
                         <input
                             ref={fileInputRef}
                             type="file"
                             accept="image/*,video/*"
                             multiple
-
-                            onChange={(e) => {
-
-                                const files =
-                                    Array.from(
-                                        e.target.files
-                                    );
-
-                                if (files.length > 3) {
-
-                                    alert(
-                                        "Maximum 3 files allowed"
-                                    );
-
-                                    e.target.value = "";
-
-                                    return;
-
-                                }
-
-                                setFormData({
-
-                                    ...formData,
-
-                                    media: files,
-
-                                });
-
-                            }}
-
-                            className="w-full p-4 rounded-xl bg-slate-800/50 text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-500 file:text-white hover:file:bg-red-600 transition-all border border-white/5"
+                            className="hidden"
+                            onChange={handleMediaChange}
+                        />
+                        
+                        <input
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/*,video/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleMediaChange}
                         />
 
+                        {/* Custom Buttons */}
+                        <div className="flex gap-4">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current.click()}
+                                className="flex-1 bg-slate-800/80 hover:bg-slate-700 p-4 rounded-xl border border-white/10 flex flex-col items-center justify-center gap-2 transition font-semibold"
+                            >
+                                <span className="text-2xl">📁</span>
+                                Upload Gallery
+                            </button>
+                            
+                            <button
+                                type="button"
+                                onClick={() => cameraInputRef.current.click()}
+                                className="flex-1 bg-red-600/80 hover:bg-red-500 p-4 rounded-xl border border-red-400/30 flex flex-col items-center justify-center gap-2 transition font-semibold shadow-lg shadow-red-900/20"
+                            >
+                                <span className="text-2xl">📷</span>
+                                Live Camera
+                            </button>
+                        </div>
+                        
+                        {/* Media Preview / Count */}
+                        {formData.media.length > 0 && (
+                            <div className="mt-3 text-sm font-semibold text-green-400">
+                                ✅ {formData.media.length} file(s) ready for upload
+                            </div>
+                        )}
                     </div>
 
                     {/* Submit */}
