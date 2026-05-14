@@ -16,6 +16,7 @@ import {
     Marker,
     Popup,
     useMap,
+    Circle,
 } from "react-leaflet";
 import L from "leaflet";
 
@@ -60,6 +61,24 @@ function LiveMap({ isAdmin = false }) {
         
     const [userLocation, setUserLocation] = 
         useState(null);
+
+    const [showDangerZones, setShowDangerZones] = 
+        useState(false);
+
+    // Helper to determine danger zone size and color based on severity
+    const getZoneOptions = (severity) => {
+        switch (severity) {
+            case "CRITICAL":
+                return { radius: 1000, color: "#ef4444", fillColor: "#ef4444", fillOpacity: 0.4 }; // Red, 1KM
+            case "HIGH":
+                return { radius: 500, color: "#f97316", fillColor: "#f97316", fillOpacity: 0.3 }; // Orange, 500m
+            case "MEDIUM":
+            case "LOW":
+                return { radius: 250, color: "#eab308", fillColor: "#eab308", fillOpacity: 0.2 }; // Yellow, 250m
+            default:
+                return { radius: 200, color: "#64748b", fillColor: "#64748b", fillOpacity: 0.2 }; // Gray
+        }
+    };
 
     // Verify Incident
     const verifyIncident = async (
@@ -210,11 +229,24 @@ function LiveMap({ isAdmin = false }) {
 
         <div className="p-6">
 
-            <h1 className="text-5xl font-bold mb-8">
-
-                Live Disaster Map
-
-            </h1>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <h1 className="text-5xl font-bold">
+                    Live Disaster Map
+                </h1>
+                
+                {/* Danger Zone Toggle */}
+                <button
+                    onClick={() => setShowDangerZones(!showDangerZones)}
+                    className={`flex items-center gap-3 px-6 py-3 rounded-xl font-bold transition-all border ${
+                        showDangerZones 
+                            ? "bg-red-500/20 text-red-400 border-red-500/50 shadow-lg shadow-red-900/30" 
+                            : "bg-slate-800 text-gray-400 border-white/5 hover:bg-slate-700"
+                    }`}
+                >
+                    <div className={`w-3 h-3 rounded-full ${showDangerZones ? "bg-red-500 animate-pulse" : "bg-gray-500"}`}></div>
+                    {showDangerZones ? "Danger Zones ON" : "Show Danger Zones"}
+                </button>
+            </div>
 
             {/* Empty State */}
             {reports.length === 0 && (
@@ -277,13 +309,50 @@ function LiveMap({ isAdmin = false }) {
                         </Marker>
                     )}
 
+                    {/* DANGER ZONES OVERLAY */}
+                    {showDangerZones && reports
+                        .filter(report => report.status !== "RESOLVED")
+                        .map(report => (
+                            <Circle
+                                key={`zone-${report.id}`}
+                                center={[report.latitude || 18.5204, report.longitude || 73.8567]}
+                                pathOptions={getZoneOptions(report.severity)}
+                                radius={getZoneOptions(report.severity).radius}
+                            >
+                                <Popup>
+                                    <div className="font-bold text-center text-slate-800">
+                                        <div className="text-red-600 uppercase">Avoid Area</div>
+                                        <div className="text-xs text-gray-600 mt-1">{report.type} Hazard</div>
+                                        <div className="text-xs font-normal mt-1">Radius: {getZoneOptions(report.severity).radius}m</div>
+                                    </div>
+                                </Popup>
+                            </Circle>
+                        ))
+                    }
+
                     <MarkerClusterGroup
                         chunkedLoading
                         maxClusterRadius={50}
                     >
                         {/* INCIDENT MARKERS */}
                         {reports
-                            .filter((report) => isAdmin || report.status !== "RESOLVED")
+                            .filter((report) => {
+                                // Admin sees everything (even resolved, regardless of distance)
+                                if (isAdmin) return true;
+                                
+                                // Regular users never see resolved incidents
+                                if (report.status === "RESOLVED") return false;
+                                
+                                // If we have user location, filter by 3 KM radius (3000 meters)
+                                if (userLocation && report.latitude && report.longitude) {
+                                    const distance = L.latLng(userLocation[0], userLocation[1])
+                                                     .distanceTo(L.latLng(report.latitude, report.longitude));
+                                    return distance <= 3000;
+                                }
+                                
+                                // If GPS is not available yet, default to showing the incident
+                                return true;
+                            })
                             .map((report) => (
 
                             <Marker
