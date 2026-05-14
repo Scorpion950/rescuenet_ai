@@ -59,7 +59,10 @@ function useNearbyAlerts() {
 
                         (error) => {
 
-                            console.error(error);
+                            // Silently ignore permission denied errors to keep console clean
+                            if (error.code !== error.PERMISSION_DENIED) {
+                                console.warn("Geolocation warning:", error.message);
+                            }
 
                         },
 
