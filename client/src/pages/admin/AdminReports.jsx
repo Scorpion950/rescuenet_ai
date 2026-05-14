@@ -236,7 +236,7 @@ function AdminReports() {
 
                                                             controls
 
-                                                            className="rounded-xl w-full h-64 object-cover"
+                                                            className="rounded-xl w-full max-h-96 object-contain bg-black/20"
 
                                                         >
 
@@ -258,7 +258,7 @@ function AdminReports() {
 
                                                             alt="Disaster"
 
-                                                            className="rounded-xl w-full h-64 object-cover"
+                                                            className="rounded-xl w-full max-h-96 object-contain bg-black/20"
 
                                                         />
 

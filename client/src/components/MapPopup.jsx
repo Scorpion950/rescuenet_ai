@@ -128,7 +128,7 @@ function MapPopup({
                                         <video
                                             key={index}
                                             controls
-                                            className="rounded-xl w-full h-40 object-cover"
+                                            className="rounded-xl w-full max-h-64 object-contain bg-black/20"
                                         >
 
                                             <source
@@ -145,7 +145,7 @@ function MapPopup({
                                             key={index}
                                             src={media}
                                             alt="Disaster"
-                                            className="rounded-xl w-full h-40 object-cover"
+                                            className="rounded-xl w-full max-h-64 object-contain bg-black/20"
                                         />
 
                                     )
