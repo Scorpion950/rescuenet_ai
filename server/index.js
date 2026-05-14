@@ -39,6 +39,9 @@ const incidentRoutes =
 const aiRoutes =
     require("./routes/aiRoutes");
 
+const smsRoutes =
+    require("./routes/smsRoutes");
+
 /* JOBS */
 const {
     startAutoResolveJob,
@@ -106,6 +109,11 @@ app.use(
 app.use(
     "/",
     aiRoutes
+);
+
+app.use(
+    "/",
+    smsRoutes
 );
 
 /* START BACKGROUND JOBS */

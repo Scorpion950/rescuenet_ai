@@ -15,6 +15,10 @@ import {
     classifyEmergency,
 } from "../utils/ai";
 
+import {
+    API_BASE_URL,
+} from "../utils/constants";
+
 function Report() {
 
     const [loading, setLoading] =
@@ -251,6 +255,23 @@ function Report() {
                 }
 
             );
+
+            // Trigger Twilio SMS for CRITICAL emergencies
+            if (finalSeverity === "CRITICAL") {
+                try {
+                    await fetch(`${API_BASE_URL}/send-emergency-sms`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            location: formData.location,
+                            type: formData.type,
+                            description: formData.description
+                        })
+                    });
+                } catch (smsError) {
+                    console.error("SMS trigger failed", smsError);
+                }
+            }
 
             alert(
                 "Incident Report Submitted Successfully!"
