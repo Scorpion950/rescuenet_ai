@@ -42,6 +42,9 @@ const aiRoutes =
 const smsRoutes =
     require("./routes/smsRoutes");
 
+const nearbyAlertsRoutes =
+    require("./routes/nearbyAlertsRoutes");
+
 /* JOBS */
 const {
     startAutoResolveJob,
@@ -114,6 +117,11 @@ app.use(
 app.use(
     "/",
     smsRoutes
+);
+
+app.use(
+    "/",
+    nearbyAlertsRoutes
 );
 
 /* START BACKGROUND JOBS */

@@ -20,6 +20,9 @@ import ResponderLayout from
 import AdminProtectedRoute from
   "./components/ProtectedRoutes/AdminProtectedRoute";
 
+import UserProtectedRoute from
+  "./components/ProtectedRoutes/UserProtectedRoute";
+
 import ResponderProtectedRoute from
   "./components/ProtectedRoutes/ResponderProtectedRoute";
 
@@ -89,7 +92,11 @@ function App() {
 
           <Route
             path="/report"
-            element={<Report />}
+            element={
+              <UserProtectedRoute>
+                <Report />
+              </UserProtectedRoute>
+            }
           />
 
           <Route
@@ -99,7 +106,11 @@ function App() {
 
           <Route
             path="/sos"
-            element={<SOS />}
+            element={
+              <UserProtectedRoute>
+                <SOS />
+              </UserProtectedRoute>
+            }
           />
 
           <Route

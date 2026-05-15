@@ -45,16 +45,34 @@ function MapUpdater({ center }) {
 function LocateControl({ location }) {
     const map = useMap();
     return (
-        <button 
+        <button
             onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 if (location) map.flyTo(location, 16, { animate: true, duration: 1.5 });
             }}
-            className="absolute bottom-24 right-6 z-[1000] bg-slate-900/80 backdrop-blur-md text-blue-400 p-4 rounded-full shadow-2xl shadow-blue-900/30 border border-blue-500/30 hover:bg-slate-800 hover:scale-110 transition flex items-center justify-center"
-            title="Locate Me"
+            style={{
+                position: "absolute",
+                bottom: "88px",
+                right: "10px",
+                zIndex: 1000,
+                width: "40px",
+                height: "40px",
+                background: "white",
+                border: "2px solid rgba(0,0,0,0.12)",
+                borderRadius: "4px",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+            }}
+            title="Your Location"
         >
-            <span className="text-2xl drop-shadow-lg">🎯</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                <path fill="#4285F4" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+            </svg>
         </button>
     );
 }
@@ -378,11 +396,11 @@ function LiveMap({ isAdmin = false }) {
                         {/* INCIDENT MARKERS */}
                         {reports
                             .filter((report) => {
-                                // Admin sees everything (even resolved, regardless of distance)
-                                if (isAdmin) return true;
-                                
-                                // Regular users never see resolved incidents
+                                // RESOLVED incidents are NEVER shown on the map (for anyone)
                                 if (report.status === "RESOLVED") return false;
+                                
+                                // Admin sees all non-resolved incidents regardless of distance
+                                if (isAdmin) return true;
                                 
                                 // If we have user location, filter by 3 KM radius (3000 meters)
                                 if (userLocation && report.latitude && report.longitude) {

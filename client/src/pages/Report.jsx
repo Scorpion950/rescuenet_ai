@@ -273,7 +273,7 @@ function Report() {
 
             );
 
-            // Trigger Twilio SMS for CRITICAL emergencies
+            // Trigger Twilio SMS for CRITICAL emergencies (admin)
             if (finalSeverity === "CRITICAL") {
                 try {
                     await fetch(`${API_BASE_URL}/send-emergency-sms`, {
@@ -288,6 +288,23 @@ function Report() {
                 } catch (smsError) {
                     console.error("SMS trigger failed", smsError);
                 }
+            }
+
+            // Trigger SMS alerts to nearby registered users (all severities)
+            try {
+                await fetch(`${API_BASE_URL}/send-nearby-alerts`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        latitude: formData.latitude,
+                        longitude: formData.longitude,
+                        type: formData.type,
+                        location: formData.location,
+                        severity: finalSeverity,
+                    })
+                });
+            } catch (nearbyErr) {
+                console.error("Nearby alerts failed:", nearbyErr);
             }
 
             alert(
