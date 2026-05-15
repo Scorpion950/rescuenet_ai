@@ -26,6 +26,8 @@ import UserProtectedRoute from
 import ResponderProtectedRoute from
   "./components/ProtectedRoutes/ResponderProtectedRoute";
 
+import { LocationProvider } from "./context/LocationContext";
+
 /* USER PAGES */
 import Home from
   "./pages/Home";
@@ -77,212 +79,212 @@ function App() {
   return (
 
     <BrowserRouter>
+      <LocationProvider>
+        <Routes>
 
-      <Routes>
-
-        {/* USER ROUTES */}
-        <Route
-          element={<UserLayout />}
-        >
-
+          {/* USER ROUTES */}
           <Route
-            path="/"
-            element={<Home />}
-          />
+            element={<UserLayout />}
+          >
 
+            <Route
+              path="/"
+              element={<Home />}
+            />
+
+            <Route
+              path="/report"
+              element={
+                <UserProtectedRoute>
+                  <Report />
+                </UserProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/livemap"
+              element={<LiveMap />}
+            />
+
+            <Route
+              path="/sos"
+              element={
+                <UserProtectedRoute>
+                  <SOS />
+                </UserProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin-access"
+              element={<AdminLogin />}
+            />
+
+          </Route>
+
+          {/* ADMIN ROUTES */}
           <Route
-            path="/report"
-            element={
-              <UserProtectedRoute>
-                <Report />
-              </UserProtectedRoute>
-            }
-          />
+            element={<AdminLayout />}
+          >
 
+            {/* Overview */}
+            <Route
+
+              path="/admin"
+
+              element={
+
+                <AdminProtectedRoute>
+
+                  <AdminOverview />
+
+                </AdminProtectedRoute>
+
+              }
+
+            />
+
+            {/* Admin Map */}
+            <Route
+
+              path="/admin/map"
+
+              element={
+
+                <AdminProtectedRoute>
+
+                  <AdminMap />
+
+                </AdminProtectedRoute>
+
+              }
+
+            />
+
+            {/* SOS */}
+            <Route
+
+              path="/admin/sos"
+
+              element={
+
+                <AdminProtectedRoute>
+
+                  <AdminSOS />
+
+                </AdminProtectedRoute>
+
+              }
+
+            />
+
+            {/* Reports */}
+            <Route
+
+              path="/admin/reports"
+
+              element={
+
+                <AdminProtectedRoute>
+
+                  <AdminReports />
+
+                </AdminProtectedRoute>
+
+              }
+
+            />
+
+          </Route>
+
+          {/* RESPONDER ROUTES */}
           <Route
-            path="/livemap"
-            element={<LiveMap />}
-          />
+            element={<ResponderLayout />}
+          >
 
-          <Route
-            path="/sos"
-            element={
-              <UserProtectedRoute>
-                <SOS />
-              </UserProtectedRoute>
-            }
-          />
+            {/* Responder Login */}
+            <Route
 
-          <Route
-            path="/admin-access"
-            element={<AdminLogin />}
-          />
+              path="/responder"
 
-        </Route>
+              element={<ResponderLogin />}
 
-        {/* ADMIN ROUTES */}
-        <Route
-          element={<AdminLayout />}
-        >
+            />
 
-          {/* Overview */}
-          <Route
+            {/* Police */}
+            <Route
 
-            path="/admin"
+              path="/responder/police"
 
-            element={
+              element={
 
-              <AdminProtectedRoute>
+                <ResponderProtectedRoute
 
-                <AdminOverview />
+                  responderType="Police"
 
-              </AdminProtectedRoute>
+                >
 
-            }
+                  <PoliceDashboard />
 
-          />
+                </ResponderProtectedRoute>
 
-          {/* Admin Map */}
-          <Route
+              }
 
-            path="/admin/map"
+            />
 
-            element={
+            {/* Ambulance */}
+            <Route
 
-              <AdminProtectedRoute>
+              path="/responder/ambulance"
 
-                <AdminMap />
+              element={
 
-              </AdminProtectedRoute>
+                <ResponderProtectedRoute
 
-            }
+                  responderType="Ambulance"
 
-          />
+                >
 
-          {/* SOS */}
-          <Route
+                  <AmbulanceDashboard />
 
-            path="/admin/sos"
+                </ResponderProtectedRoute>
 
-            element={
+              }
 
-              <AdminProtectedRoute>
+            />
 
-                <AdminSOS />
 
-              </AdminProtectedRoute>
+            {/* Fire */}
+            <Route
 
-            }
+              path="/responder/fire"
 
-          />
+              element={
 
-          {/* Reports */}
-          <Route
+                <ResponderProtectedRoute
 
-            path="/admin/reports"
+                  responderType="Fire Brigade"
 
-            element={
+                >
 
-              <AdminProtectedRoute>
+                  <FireDashboard />
 
-                <AdminReports />
+                </ResponderProtectedRoute>
 
-              </AdminProtectedRoute>
+              }
 
-            }
+            />
 
-          />
+            {/* Not Found */}
+            <Route
+              path="*"
+              element={<NotFound />}
+            />
 
-        </Route>
+          </Route>
 
-        {/* RESPONDER ROUTES */}
-        <Route
-          element={<ResponderLayout />}
-        >
-
-          {/* Responder Login */}
-          <Route
-
-            path="/responder"
-
-            element={<ResponderLogin />}
-
-          />
-
-          {/* Police */}
-          <Route
-
-            path="/responder/police"
-
-            element={
-
-              <ResponderProtectedRoute
-
-                responderType="Police"
-
-              >
-
-                <PoliceDashboard />
-
-              </ResponderProtectedRoute>
-
-            }
-
-          />
-
-          {/* Ambulance */}
-          <Route
-
-            path="/responder/ambulance"
-
-            element={
-
-              <ResponderProtectedRoute
-
-                responderType="Ambulance"
-
-              >
-
-                <AmbulanceDashboard />
-
-              </ResponderProtectedRoute>
-
-            }
-
-          />
-
-
-          {/* Fire */}
-          <Route
-
-            path="/responder/fire"
-
-            element={
-
-              <ResponderProtectedRoute
-
-                responderType="Fire Brigade"
-
-              >
-
-                <FireDashboard />
-
-              </ResponderProtectedRoute>
-
-            }
-
-          />
-
-          {/* Not Found */}
-          <Route
-            path="*"
-            element={<NotFound />}
-          />
-
-        </Route>
-
-      </Routes>
-
+        </Routes>
+      </LocationProvider>
     </BrowserRouter>
 
   );

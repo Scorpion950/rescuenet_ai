@@ -2,10 +2,12 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useState } from "react";
 import { db } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useLocation } from "../../context/LocationContext";
 
 function UserProtectedRoute({ children }) {
 
     const { isAuthenticated, isLoading, loginWithRedirect, user } = useAuth0();
+    const { userLocation } = useLocation();
     const [showPhoneModal, setShowPhoneModal] = useState(false);
     const [phone, setPhone] = useState("");
     const [checking, setChecking] = useState(true);
@@ -48,21 +50,9 @@ function UserProtectedRoute({ children }) {
         try {
             const userId = user.sub.replace(/\|/g, "_");
 
-            // Get user's current location to store it
-            let latitude = null;
-            let longitude = null;
-            try {
-                await new Promise((resolve) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            latitude = pos.coords.latitude;
-                            longitude = pos.coords.longitude;
-                            resolve();
-                        },
-                        () => resolve() // If denied, still continue
-                    );
-                });
-            } catch (_) {}
+            // Use the live location from context if available
+            const latitude = userLocation ? userLocation[0] : null;
+            const longitude = userLocation ? userLocation[1] : null;
 
             await setDoc(
                 doc(db, "users", userId),

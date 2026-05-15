@@ -19,7 +19,23 @@ import {
     API_BASE_URL,
 } from "../utils/constants";
 
+import { useLocation } from "../context/LocationContext";
+
 function Report() {
+
+    const { userLocation } = useLocation();
+
+    const [formData, setFormData] =
+        useState({
+
+            type: "",
+            description: "",
+            location: "Detecting location...",
+            latitude: null,
+            longitude: null,
+            media: [],
+
+        });
 
     const [loading, setLoading] =
         useState(false);
@@ -27,232 +43,178 @@ function Report() {
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
-    const [formData, setFormData] =
-        useState({
-
-            type: "",
-            location: "",
-            description: "",
-            media: [],
-
-            latitude: "",
-            longitude: "",
-
-        });
-
-    // Auto fetch GPS location
+    // Update coordinates when context changes (Global Watcher)
     useEffect(() => {
+        if (userLocation) {
+            const [lat, lon] = userLocation;
+            
+            // Update coords immediately
+            setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: lon
+            }));
 
-        navigator.geolocation.getCurrentPosition(
-
-            async (position) => {
-
-                const latitude =
-                    position.coords.latitude;
-
-                const longitude =
-                    position.coords.longitude;
-
-                // Reverse Geocoding
-                try {
-
-                    const response =
-                        await fetch(
-
-                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-
-                        );
-
-                    const data =
-                        await response.json();
-
-                    const address =
-                        data.address || {};
-
-                    const areaName =
-
-                        address.suburb ||
-
-                        address.neighbourhood ||
-
-                        address.city ||
-
-                        address.town ||
-
-                        address.village ||
-
-                        address.county ||
-
-                        address.state_district ||
-
-                        address.state ||
-
-                        "Current Location";
-
-                    setFormData((prev) => ({
-
-                        ...prev,
-
-                        latitude,
-                        longitude,
-
-                        location:
-                            areaName,
-
-                    }));
-
-                } catch (error) {
-
-                    console.error(error);
-
-                }
-
-            },
-
-            (error) => {
-
-                console.error(error);
-
-                alert(
-                    "Location access denied."
-                );
-
-            }
-
-        );
-
-    }, []);
+            // Fetch human readable address (Debounced/Cached behavior)
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                .then(res => res.json())
+                .then(data => {
+                    const address = data.address || {};
+                    const areaName = address.suburb || address.neighbourhood || address.city || address.town || address.village || address.state_district || "Current Location";
+                    setFormData(prev => ({ ...prev, location: areaName }));
+                })
+                .catch(err => console.error("Reverse geocoding failed:", err));
+        }
+    }, [userLocation]);
 
     // Handle input changes
     const handleChange = (e) => {
 
-        setFormData({
+        const { name, value } =
+            e.target;
 
-            ...formData,
+        setFormData((prev) => ({
 
-            [e.target.name]:
-                e.target.value,
+            ...prev,
+            [name]:
+                value,
 
-        });
+        }));
 
     };
 
+    // Handle media selection
     const handleMediaChange = (e) => {
-        const files = Array.from(e.target.files);
-        
-        // Prevent exceeding 3 files total
-        const totalFiles = formData.media.length + files.length;
-        if (totalFiles > 3) {
-            alert("Maximum 3 files allowed total.");
-            e.target.value = "";
-            return;
-        }
 
-        setFormData({
-            ...formData,
-            media: [...formData.media, ...files],
-        });
+        const files =
+            Array.from(e.target.files);
+
+        setFormData((prev) => ({
+
+            ...prev,
+            media: [
+                ...prev.media,
+                ...files
+            ],
+
+        }));
+
     };
 
-    // Submit report
+    // Remove media
+    const removeMedia = (index) => {
+
+        setFormData((prev) => ({
+
+            ...prev,
+
+            media:
+                prev.media.filter(
+                    (_, i) =>
+                        i !== index
+                ),
+
+        }));
+
+    };
+
+    // Submit Report
     const handleSubmit = async (e) => {
 
-        e.preventDefault();
+        if (e) e.preventDefault();
+
+        if (!formData.type || !formData.description) {
+
+            alert(
+                "Please fill in all fields"
+            );
+
+            return;
+
+        }
+
+        setLoading(true);
 
         try {
 
-            setLoading(true);
+            // Step 1: Upload media to Cloudinary
+            const mediaUrls = [];
 
-            // We will do AI classification AFTER uploading media
+            for (const file of formData.media) {
 
-            // Upload media
-            let mediaUrls = [];
+                const data =
+                    new FormData();
 
-            if (formData.media.length > 0) {
+                data.append(
+                    "file",
+                    file
+                );
 
-                for (const file of formData.media) {
+                data.append(
+                    "upload_preset",
+                    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+                );
 
-                    const mediaData =
-                        new FormData();
+                const res =
+                    await fetch(
+                        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`,
 
-                    mediaData.append(
-                        "file",
-                        file
+                        {
+                            method: "POST",
+                            body: data,
+                        }
+
                     );
 
-                    mediaData.append(
+                const fileData =
+                    await res.json();
 
-                        "upload_preset",
+                mediaUrls.push({
 
-                        import.meta.env
-                            .VITE_CLOUDINARY_UPLOAD_PRESET
+                    url:
+                        fileData.secure_url,
 
-                    );
+                    type:
+                        fileData.resource_type,
 
-                    const response =
-                        await fetch(
-
-                            `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`,
-
-                            {
-
-                                method: "POST",
-
-                                body: mediaData,
-
-                            }
-
-                        );
-
-                    const data =
-                        await response.json();
-
-                    mediaUrls.push(
-                        data.secure_url
-                    );
-
-                }
+                });
 
             }
 
-            // AI classification with Vision
-            const aiResult =
+            // Step 2: Use AI to refine severity
+            const aiAnalysis =
                 await classifyEmergency(
                     formData.description,
-                    mediaUrls
+                    mediaUrls.length > 0 ? mediaUrls[0].url : null
                 );
 
             const finalSeverity =
-                aiResult.severity ||
-                "PENDING";
-            
-            const assignedDepartment =
-                aiResult.department ||
-                "Police";
+                aiAnalysis.severity || "LOW";
 
-            // Save report
+            // Step 3: Save to Firestore
             await addDoc(
 
-                collection(db, "reports"),
+                collection(
+                    db,
+                    "incidents"
+                ),
 
                 {
 
                     type:
                         formData.type,
 
-                    location:
-                        formData.location,
-
                     description:
                         formData.description,
 
+                    location:
+                        formData.location,
+
                     severity:
                         finalSeverity,
-                    
-                    department:
-                        assignedDepartment,
 
-                    mediaUrls,
+                    media:
+                        mediaUrls,
 
                     latitude:
                         formData.latitude,
@@ -329,11 +291,9 @@ function Report() {
 
             }));
 
-            // Reset file input
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            if (cameraInputRef.current) cameraInputRef.current.value = "";
+        }
 
-        } catch (error) {
+        catch (error) {
 
             console.error(error);
 
@@ -341,7 +301,9 @@ function Report() {
                 "Failed to submit report"
             );
 
-        } finally {
+        }
+
+        finally {
 
             setLoading(false);
 
@@ -351,172 +313,150 @@ function Report() {
 
     return (
 
-        <div className="min-h-screen flex justify-center items-center px-4 py-12 relative">
+        <div className="min-h-screen bg-slate-950 text-white pb-20 pt-10 px-4">
 
-            <div className="glass-panel p-10 rounded-3xl shadow-2xl w-full max-w-2xl border border-white/10 relative z-10">
+            <div className="max-w-2xl mx-auto glass-panel p-8 rounded-3xl border border-white/10 shadow-2xl animate-fade-in-up">
 
-                <h1 className="text-5xl font-extrabold mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 drop-shadow-sm">
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-orange-400 mb-2">
+                        Report Emergency
+                    </h1>
+                    <p className="text-slate-400 font-medium">Your report will be analyzed by AI and sent to nearby responders.</p>
+                </div>
 
-                    Report Emergency
+                <form onSubmit={handleSubmit} className="space-y-8">
 
-                </h1>
-
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-6"
-                >
-
-                    {/* Type */}
-                    <div>
-
-                        <label className="block mb-2 text-gray-300 font-medium">
-
-                            Disaster Type
-
-                        </label>
-
-                        <select
-                            name="type"
-                            value={formData.type}
-                            onChange={handleChange}
-                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                            required
-                        >
-
-                            <option value="">
-                                Select Type
-                            </option>
-
-                            <option value="Flood">
-                                Flood
-                            </option>
-
-                            <option value="Fire">
-                                Fire
-                            </option>
-
-                            <option value="Accident">
-                                Accident
-                            </option>
-
-                            <option value="Earthquake">
-                                Earthquake
-                            </option>
-
-                        </select>
-
+                    {/* LOCATION PREVIEW */}
+                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center gap-4 group hover:border-blue-500/30 transition-colors">
+                        <div className="bg-blue-500/20 p-3 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Incident Location</label>
+                            <p className="text-blue-200 font-semibold truncate max-w-[400px]">
+                                {formData.location}
+                            </p>
+                        </div>
                     </div>
 
-                    {/* Location */}
-                    <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold text-slate-400 ml-1">Emergency Type</label>
+                            <select
+                                name="type"
+                                value={formData.type}
+                                onChange={handleChange}
+                                className="w-full p-4 rounded-xl bg-slate-900 border border-white/10 focus:ring-2 focus:ring-red-500 outline-none transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">Select Type</option>
+                                <option value="Fire">Fire</option>
+                                <option value="Accident">Accident</option>
+                                <option value="Medical">Medical</option>
+                                <option value="Flood">Flood</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
 
-                        <label className="block mb-2 text-gray-300 font-medium">
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold text-slate-400 ml-1">Media Evidence</label>
+                            <div className="flex gap-2">
+                                {/* Native Gallery Upload */}
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current.click()}
+                                    className="flex-1 bg-slate-900 border border-white/10 p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors group"
+                                >
+                                    <span className="text-xl group-hover:scale-125 transition-transform">📁</span>
+                                    <span className="font-bold text-xs uppercase tracking-tight">Gallery</span>
+                                </button>
+                                
+                                {/* Native Camera Trigger */}
+                                <button
+                                    type="button"
+                                    onClick={() => cameraInputRef.current.click()}
+                                    className="flex-1 bg-blue-600/20 border border-blue-500/30 p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600/30 transition-colors group"
+                                >
+                                    <span className="text-xl group-hover:scale-125 transition-transform">📷</span>
+                                    <span className="font-bold text-xs uppercase tracking-tight text-blue-200">Live Camera</span>
+                                </button>
+                            </div>
 
-                            Location
-
-                        </label>
-
-                        <input
-                            type="text"
-                            name="location"
-                            value={formData.location}
-                            onChange={handleChange}
-                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                            required
-                        />
-
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleMediaChange}
+                                multiple
+                                accept="image/*,video/*"
+                                className="hidden"
+                            />
+                            
+                            <input
+                                type="file"
+                                ref={cameraInputRef}
+                                onChange={handleMediaChange}
+                                capture="environment"
+                                accept="image/*,video/*"
+                                className="hidden"
+                            />
+                        </div>
                     </div>
 
-                    {/* Description */}
-                    <div>
-
-                        <label className="block mb-2 text-gray-300 font-medium">
-
-                            Description
-
-                        </label>
-
+                    <div className="space-y-3">
+                        <label className="text-sm font-bold text-slate-400 ml-1">Incident Description</label>
                         <textarea
                             name="description"
-                            placeholder="Describe the emergency in detail..."
                             value={formData.description}
                             onChange={handleChange}
-                            rows="5"
-                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
-                            required
-                        />
-
+                            rows="4"
+                            placeholder="Describe the situation... (AI will detect severity based on your words)"
+                            className="w-full p-4 rounded-2xl bg-slate-900 border border-white/10 focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
+                        ></textarea>
                     </div>
 
-                    {/* Media Upload Options */}
-                    <div>
-                        <label className="block mb-3 text-gray-300 font-medium">
-                            Media Evidence (Max 3 Files)
-                        </label>
-                        
-                        {/* Hidden Inputs */}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*,video/*"
-                            multiple
-                            className="hidden"
-                            onChange={handleMediaChange}
-                        />
-                        
-                        <input
-                            ref={cameraInputRef}
-                            type="file"
-                            accept="image/*,video/*"
-                            capture="environment"
-                            className="hidden"
-                            onChange={handleMediaChange}
-                        />
-
-                        {/* Custom Buttons */}
-                        <div className="flex gap-4">
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current.click()}
-                                className="flex-1 bg-slate-800/80 hover:bg-slate-700 p-4 rounded-xl border border-white/10 flex flex-col items-center justify-center gap-2 transition font-semibold"
-                            >
-                                <span className="text-2xl">📁</span>
-                                Upload Gallery
-                            </button>
-                            
-                            <button
-                                type="button"
-                                onClick={() => cameraInputRef.current.click()}
-                                className="flex-1 bg-red-600/80 hover:bg-red-500 p-4 rounded-xl border border-red-400/30 flex flex-col items-center justify-center gap-2 transition font-semibold shadow-lg shadow-red-900/20"
-                            >
-                                <span className="text-2xl">📷</span>
-                                Live Camera
-                            </button>
+                    {/* MEDIA PREVIEW */}
+                    {formData.media.length > 0 && (
+                        <div className="flex flex-wrap gap-4 p-4 bg-slate-900/30 rounded-2xl border border-white/5">
+                            {formData.media.map((file, i) => (
+                                <div key={i} className="relative group">
+                                    <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-blue-500/50">
+                                        <img
+                                            src={URL.createObjectURL(file)}
+                                            alt="Preview"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeMedia(i)}
+                                        className="absolute -top-2 -right-2 bg-red-600 rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/20 hover:scale-110 transition-transform"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                        
-                        {/* Media Preview / Count */}
-                        {formData.media.length > 0 && (
-                            <div className="mt-3 text-sm font-semibold text-green-400">
-                                ✅ {formData.media.length} file(s) ready for upload
-                            </div>
-                        )}
-                    </div>
+                    )}
 
-                    {/* Submit */}
                     <button
                         type="submit"
                         disabled={loading}
-                        className="btn-premium mt-8 w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 p-4 rounded-xl font-bold text-xl shadow-lg shadow-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`w-full p-5 rounded-2xl font-black text-xl tracking-widest uppercase transition-all shadow-2xl ${
+                            loading 
+                                ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+                                : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 hover:scale-[1.02] active:scale-95 shadow-red-900/30"
+                        }`}
                     >
-
-                        {
-
-                            loading
-                                ? "Submitting securely..."
-                                : "Submit Report"
-
-                        }
-
+                        {loading ? (
+                            <span className="flex items-center justify-center gap-3">
+                                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                                AI ANALYZING...
+                            </span>
+                        ) : (
+                            "Submit Report"
+                        )}
                     </button>
 
                 </form>

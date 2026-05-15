@@ -89,14 +89,14 @@ import {
 
 } from "../utils/constants";
 
+import { useLocation } from "../context/LocationContext";
+
 function LiveMap({ isAdmin = false }) {
+    const { userLocation } = useLocation();
 
     const [reports, setReports] =
         useState([]);
         
-    const [userLocation, setUserLocation] = 
-        useState(null);
-
     const [showDangerZones, setShowDangerZones] = 
         useState(false);
 
@@ -241,24 +241,6 @@ function LiveMap({ isAdmin = false }) {
 
     }, []);
 
-    // Get User Location
-    useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setUserLocation([
-                        position.coords.latitude,
-                        position.coords.longitude
-                    ]);
-                },
-                (error) => {
-                    if (error.code !== error.PERMISSION_DENIED) {
-                        console.warn("Geolocation error:", error);
-                    }
-                }
-            );
-        }
-    }, []);
 
     return (
 
