@@ -196,7 +196,7 @@ function Report() {
 
                 collection(
                     db,
-                    "incidents"
+                    "reports"
                 ),
 
                 {
