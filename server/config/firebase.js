@@ -27,4 +27,6 @@ admin.initializeApp({
 const db =
     admin.firestore();
 
+db.admin = admin; // Attach admin to db to avoid breaking other imports
+
 module.exports = db;

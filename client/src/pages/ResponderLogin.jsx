@@ -13,6 +13,9 @@ import {
     API_BASE_URL,
 } from "../utils/constants";
 
+import { auth } from "../firebase";
+import { signInWithCustomToken } from "firebase/auth";
+
 function ResponderLogin() {
 
     const navigate =
@@ -81,6 +84,11 @@ function ResponderLogin() {
                 data.responderType
 
             );
+
+            // Sign in to Firebase with Custom Token for secure database access
+            if (data.firebaseToken) {
+                await signInWithCustomToken(auth, data.firebaseToken);
+            }
 
             toast.success(
                 "Login Successful"

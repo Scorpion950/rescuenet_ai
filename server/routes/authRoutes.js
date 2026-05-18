@@ -1,6 +1,9 @@
 const express =
     require("express");
 
+const db = require("../config/firebase");
+const admin = db.admin;
+
 const router =
     express.Router();
 
@@ -9,7 +12,7 @@ router.post(
 
     "/responder-login",
 
-    (req, res) => {
+    async (req, res) => {
 
         const {
 
@@ -37,16 +40,24 @@ router.post(
             credentials[department] === password
 
         ) {
+            try {
+                // Generate a custom token for the responder
+                const firebaseToken = await admin.auth().createCustomToken(`responder_${department.replace(/\s+/g, '')}`);
+                
+                return res.json({
 
-            return res.json({
+                    success: true,
 
-                success: true,
+                    responderType:
+                        department,
 
-                responderType:
-                    department,
+                    firebaseToken,
 
-            });
-
+                });
+            } catch (error) {
+                console.error("Firebase custom token error:", error);
+                return res.status(500).json({ error: "Failed to generate auth token" });
+            }
         }
 
         // Invalid
@@ -66,7 +77,7 @@ router.post(
 
     "/admin-login",
 
-    (req, res) => {
+    async (req, res) => {
 
         const { password } =
             req.body;
@@ -77,12 +88,21 @@ router.post(
             process.env.ADMIN_PASSWORD
 
         ) {
+            try {
+                // Generate a custom token for the admin
+                const firebaseToken = await admin.auth().createCustomToken("admin_user");
 
-            return res.json({
+                return res.json({
 
-                success: true,
+                    success: true,
 
-            });
+                    firebaseToken,
+
+                });
+            } catch (error) {
+                console.error("Firebase custom token error:", error);
+                return res.status(500).json({ error: "Failed to generate auth token" });
+            }
 
         }
 
