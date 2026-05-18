@@ -29,7 +29,7 @@ const analyzeReport = async (
             genAI.getGenerativeModel({
 
                 model:
-                    "gemini-2.5-flash",
+                    "gemini-1.5-flash",
 
             });
 

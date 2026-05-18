@@ -66,6 +66,7 @@ function ResponderDashboard({
 
                     );
 
+                const data = await response.json();
                 let incidentsList = data.incidents || [];
                 incidentsList.sort((a, b) => {
                     const timeA = a.createdAt?._seconds || a.createdAt?.seconds || 0;
