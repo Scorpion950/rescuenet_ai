@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import toast from "react-hot-toast";
 
 function AdminOverview() {
 
@@ -64,6 +65,14 @@ function AdminOverview() {
 
                     setIsInitialLoad(false);
 
+                },
+
+                (error) => {
+                    console.error("Firestore Reports snapshot error:", error);
+                    toast.error("Database connection blocked. Please disable your Ad-Blocker or Brave Shield to load reports overview!", {
+                        duration: 10000,
+                        position: "top-center"
+                    });
                 }
 
             );
@@ -118,6 +127,14 @@ function AdminOverview() {
                     
                     setIsSosInitial(false);
 
+                },
+
+                (error) => {
+                    console.error("Firestore SOS snapshot error:", error);
+                    toast.error("Database connection blocked. Please disable your Ad-Blocker or Brave Shield to load active SOS alerts overview!", {
+                        duration: 10000,
+                        position: "top-center"
+                    });
                 }
 
             );

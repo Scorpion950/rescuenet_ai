@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import toast from "react-hot-toast";
 
 function AdminReports() {
 
@@ -40,6 +41,13 @@ function AdminReports() {
                     return timeB - timeA;
                 });
                 setReports(fetchedReports);
+            },
+            (error) => {
+                console.error("Firestore Reports snapshot error:", error);
+                toast.error("Database connection blocked. Please disable your Ad-Blocker or Brave Shield to load incident reports!", {
+                    duration: 10000,
+                    position: "top-center"
+                });
             }
         );
         return () => unsubscribe();

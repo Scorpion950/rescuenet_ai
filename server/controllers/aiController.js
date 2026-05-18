@@ -15,6 +15,12 @@ const analyzeReport = async (
 ) => {
 
     try {
+        if (!process.env.GEMINI_API_KEY) {
+            console.error("Error: GEMINI_API_KEY is not configured in the environment variables!");
+            return res.status(500).json({
+                error: "Gemini API key is not configured on the server. Please add GEMINI_API_KEY to your server environment variables (e.g. in your Render Dashboard or local .env file)."
+            });
+        }
 
         const { description, mediaUrls = [] } =
             req.body;

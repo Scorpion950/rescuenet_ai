@@ -233,6 +233,14 @@ function LiveMap({ isAdmin = false }) {
                         fetchedReports
                     );
 
+                },
+
+                (error) => {
+                    console.error("Firestore snapshot error:", error);
+                    toast.error("Database connection blocked. Please disable your Ad-Blocker or Brave Shield for this site to load the live disaster reports!", {
+                        duration: 10000,
+                        position: "top-center"
+                    });
                 }
 
             );

@@ -108,34 +108,44 @@ function ResponderDashboard({
             where("department", "==", responderType)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            if (!isInitialLoad) {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        const newIncident = change.doc.data();
-                        toast.error(`🚨 NEW EMERGENCY ASSIGNED: ${newIncident.type || 'Incident'}!`, {
-                            duration: 10000,
-                            position: 'top-right',
-                            style: {
-                                background: '#333',
-                                color: '#fff',
-                                fontWeight: 'bold'
-                            }
-                        });
-                        // Wait a moment and refetch the full incident list from backend
-                        // to get distances and assigned stations logic
-                        setTimeout(() => {
-                            fetch(`${API_BASE_URL}/responder-incidents/${responderType}`, {
-                                headers: { "x-responder-key": localStorage.getItem("responderType") }
-                            }).then(res => res.json()).then(data => {
-                                setIncidents(data.incidents || []);
-                            }).catch(console.error);
-                        }, 1000);
-                    }
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                if (!isInitialLoad) {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === "added") {
+                            const newIncident = change.doc.data();
+                            toast.error(`🚨 NEW EMERGENCY ASSIGNED: ${newIncident.type || 'Incident'}!`, {
+                                duration: 10000,
+                                position: 'top-right',
+                                style: {
+                                    background: '#333',
+                                    color: '#fff',
+                                    fontWeight: 'bold'
+                                }
+                            });
+                            // Wait a moment and refetch the full incident list from backend
+                            // to get distances and assigned stations logic
+                            setTimeout(() => {
+                                fetch(`${API_BASE_URL}/responder-incidents/${responderType}`, {
+                                    headers: { "x-responder-key": localStorage.getItem("responderType") }
+                                }).then(res => res.json()).then(data => {
+                                    setIncidents(data.incidents || []);
+                                }).catch(console.error);
+                            }, 1000);
+                        }
+                    });
+                }
+                setIsInitialLoad(false);
+            },
+            (error) => {
+                console.error("Firestore Responder snapshot error:", error);
+                toast.error("Real-time notifications blocked. Please disable your Ad-Blocker or Brave Shield to receive live alerts!", {
+                    duration: 10000,
+                    position: "top-center"
                 });
             }
-            setIsInitialLoad(false);
-        });
+        );
 
         return () => unsubscribe();
     }, [isInitialLoad, responderType]);
