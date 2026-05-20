@@ -8,10 +8,6 @@ import {
 } from "../utils/constants";
 
 import {
-    updateIncidentStatus,
-} from "../services/statusService";
-
-import {
     collection,
     query,
     where,
@@ -348,39 +344,42 @@ function ResponderDashboard({
                                 <button
 
                                     onClick={async () => {
+                                        try {
+                                            const response = await fetch(
+                                                `${API_BASE_URL}/deploy-incident/${incident.id}`,
+                                                {
+                                                    method: "PUT",
+                                                    headers: {
+                                                        "Content-Type": "application/json",
+                                                        "x-responder-key": localStorage.getItem("responderType"),
+                                                    },
+                                                }
+                                            );
 
-                                        await updateIncidentStatus(
+                                            if (!response.ok) {
+                                                throw new Error("Failed to deploy incident");
+                                            }
 
-                                            incident.id,
+                                            setIncidents((prev) =>
+                                                prev.map((item) =>
+                                                    item.id === incident.id
+                                                        ? {
+                                                              ...item,
+                                                              status: "DEPLOYED",
+                                                          }
+                                                        : item
+                                                )
+                                            );
 
-                                            "DEPLOYED"
-
-                                        );
-
-                                        setIncidents((prev) =>
-
-                                            prev.map((item) =>
-
-                                                item.id === incident.id
-
-                                                    ? {
-
-                                                        ...item,
-
-                                                        status: "DEPLOYED",
-
-                                                    }
-
-                                                    : item
-
-                                            )
-
-                                        );
-
-                                        toast.success(
-                                            "Incident Deployed"
-                                        );
-
+                                            toast.success(
+                                                "Incident Deployed"
+                                            );
+                                        } catch (error) {
+                                            console.error(error);
+                                            toast.error(
+                                                "Unable to deploy incident. Please try again."
+                                            );
+                                        }
                                     }}
 
                                     className="btn-premium flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-blue-900/50"
@@ -394,39 +393,42 @@ function ResponderDashboard({
                                 <button
 
                                     onClick={async () => {
+                                        try {
+                                            const response = await fetch(
+                                                `${API_BASE_URL}/resolve-incident/${incident.id}`,
+                                                {
+                                                    method: "PUT",
+                                                    headers: {
+                                                        "Content-Type": "application/json",
+                                                        "x-responder-key": localStorage.getItem("responderType"),
+                                                    },
+                                                }
+                                            );
 
-                                        await updateIncidentStatus(
+                                            if (!response.ok) {
+                                                throw new Error("Failed to resolve incident");
+                                            }
 
-                                            incident.id,
+                                            setIncidents((prev) =>
+                                                prev.map((item) =>
+                                                    item.id === incident.id
+                                                        ? {
+                                                              ...item,
+                                                              status: "RESOLVED",
+                                                          }
+                                                        : item
+                                                )
+                                            );
 
-                                            "RESOLVED"
-
-                                        );
-
-                                        setIncidents((prev) =>
-
-                                            prev.map((item) =>
-
-                                                item.id === incident.id
-
-                                                    ? {
-
-                                                        ...item,
-
-                                                        status: "RESOLVED",
-
-                                                    }
-
-                                                    : item
-
-                                            )
-
-                                        );
-
-                                        toast.success(
-                                            "Incident Resolved"
-                                        );
-
+                                            toast.success(
+                                                "Incident Resolved"
+                                            );
+                                        } catch (error) {
+                                            console.error(error);
+                                            toast.error(
+                                                "Unable to resolve incident. Please try again."
+                                            );
+                                        }
                                     }}
 
                                     className="btn-premium flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 px-6 py-3 rounded-xl font-bold transition shadow-lg shadow-green-900/50"
