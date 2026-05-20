@@ -22,18 +22,22 @@ const analyzeReport = async (
             });
         }
 
-        const { description, mediaUrls = [] } =
-            req.body;
+        const { description } = req.body;
+        const mediaUrls = Array.isArray(req.body.mediaUrls)
+            ? req.body.mediaUrls
+            : [];
 
-        const model =
-            genAI.getGenerativeModel({
+        const modelCandidates = [
+            process.env.GEMINI_MODEL,
+            "gemini-1.5",
+            "gemini-1.5-pro",
+            "gemini-1.0",
+        ].filter(Boolean);
 
-                model:
-                    "gemini-1.5-flash",
+        let result;
+        let lastAIError;
 
-            });
-
-        let promptParts = [
+        const promptParts = [
             `
             Analyze this emergency report and classify its severity (LOW, MEDIUM, HIGH, or CRITICAL).
             Also, auto-assign the best responding department (Police, Ambulance, or Fire Brigade).
@@ -69,10 +73,25 @@ const analyzeReport = async (
             }
         }
 
-        const result =
-            await model.generateContent(
-                promptParts
-            );
+        for (const candidate of modelCandidates) {
+            try {
+                const model = genAI.getGenerativeModel({ model: candidate });
+                result = await model.generateContent(promptParts);
+                console.log(`AI model used: ${candidate}`);
+                break;
+            } catch (err) {
+                lastAIError = err;
+                if (err.status === 404 || err.message?.includes('not found')) {
+                    console.warn(`Gemini model not available for generateContent: ${candidate}. Trying next candidate.`);
+                    continue;
+                }
+                throw err;
+            }
+        }
+
+        if (!result) {
+            throw lastAIError || new Error('Failed to generate AI content with any configured Gemini model.');
+        }
 
         const responseText =
             result.response
@@ -86,24 +105,38 @@ const analyzeReport = async (
             parsedData = JSON.parse(responseText);
         } catch (e) {
             console.error("Failed to parse AI JSON:", responseText);
-            parsedData = { severity: "PENDING", department: "Police" };
+            parsedData = { severity: "LOW", department: "Police" };
         }
 
         res.json({
 
-            severity: parsedData.severity || "PENDING",
+            severity: parsedData.severity || "LOW",
             department: parsedData.department || "Police"
 
         });
 
     } catch (error) {
 
-        console.error(error);
+        console.error("AI Analysis Error:", error);
+        console.error("Error Details:", {
+            message: error.message,
+            code: error.code,
+            status: error.status,
+            stack: error.stack
+        });
+
+        // Check if it's a GEMINI API key issue
+        if (error.message && error.message.includes('API key')) {
+            return res.status(500).json({
+                error: "GEMINI_API_KEY not configured. Check server environment variables.",
+                details: error.message
+            });
+        }
 
         res.status(500).json({
 
-            error:
-                "AI analysis failed",
+            error: "AI analysis failed",
+            message: error.message
 
         });
 

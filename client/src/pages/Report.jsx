@@ -185,14 +185,16 @@ function Report() {
             const aiAnalysis =
                 await classifyEmergency(
                     formData.description,
-                    mediaUrls.length > 0 ? mediaUrls[0].url : null
+                    mediaUrls.map((media) => media.url)
                 );
 
             const finalSeverity =
-                aiAnalysis.severity || "LOW";
+                aiAnalysis.error || aiAnalysis.severity === "PENDING"
+                    ? "LOW"
+                    : aiAnalysis.severity || "LOW";
 
-            // Step 3: Save to Firestore
-            await addDoc(
+            // Step 3: Save to Firestore and get the document reference
+            const docRef = await addDoc(
 
                 collection(
                     db,
@@ -213,7 +215,7 @@ function Report() {
                     severity:
                         finalSeverity,
 
-                    media:
+                    mediaUrls:
                         mediaUrls,
 
                     latitude:
@@ -234,6 +236,23 @@ function Report() {
                 }
 
             );
+
+            // Step 4: Distribute incident to nearby responders
+            try {
+                await fetch(`${API_BASE_URL}/distribute-incident`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        reportId: docRef.id,
+                        latitude: formData.latitude,
+                        longitude: formData.longitude,
+                        type: formData.type,
+                        severity: finalSeverity,
+                    })
+                });
+            } catch (distributionError) {
+                console.error("Incident distribution failed:", distributionError);
+            }
 
             // Trigger Twilio SMS for CRITICAL emergencies (admin)
             if (finalSeverity === "CRITICAL") {
@@ -344,8 +363,9 @@ function Report() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                            <label className="text-sm font-bold text-slate-400 ml-1">Emergency Type</label>
+                            <label htmlFor="type" className="text-sm font-bold text-slate-400 ml-1">Emergency Type</label>
                             <select
+                                id="type"
                                 name="type"
                                 value={formData.type}
                                 onChange={handleChange}
@@ -385,6 +405,8 @@ function Report() {
                             </div>
 
                             <input
+                                id="gallery-upload"
+                                name="gallery-upload"
                                 type="file"
                                 ref={fileInputRef}
                                 onChange={handleMediaChange}
@@ -394,6 +416,8 @@ function Report() {
                             />
                             
                             <input
+                                id="camera-upload"
+                                name="camera-upload"
                                 type="file"
                                 ref={cameraInputRef}
                                 onChange={handleMediaChange}
@@ -405,8 +429,9 @@ function Report() {
                     </div>
 
                     <div className="space-y-3">
-                        <label className="text-sm font-bold text-slate-400 ml-1">Incident Description</label>
+                        <label htmlFor="description" className="text-sm font-bold text-slate-400 ml-1">Incident Description</label>
                         <textarea
+                            id="description"
                             name="description"
                             value={formData.description}
                             onChange={handleChange}

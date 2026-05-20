@@ -33,7 +33,7 @@ export const analyzeEmergency =
             if (!response.ok) {
 
                 return {
-                    severity: "PENDING",
+                    severity: "LOW",
                     department: "Police", // Default fallback
                     error: true,
                 };
@@ -56,7 +56,8 @@ export const analyzeEmergency =
             console.error(error);
 
             return {
-                severity: "PENDING",
+                severity: "LOW",
+                department: "Police",
                 error: true,
             };
 

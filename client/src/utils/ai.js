@@ -3,10 +3,11 @@ import {
 } from "../services/aiService";
 
 export const classifyEmergency =
-    async (description) => {
+    async (description, mediaUrls = []) => {
 
         return await analyzeEmergency(
-            description
+            description,
+            mediaUrls
         );
 
     };
