@@ -93,12 +93,20 @@ import { useLocation } from "../context/LocationContext";
 
 function LiveMap({ isAdmin = false }) {
     const { userLocation } = useLocation();
+    const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // Default to India center
 
     const [reports, setReports] =
         useState([]);
         
     const [showDangerZones, setShowDangerZones] = 
         useState(false);
+
+    // Update map center when user location changes
+    useEffect(() => {
+        if (userLocation) {
+            setMapCenter(userLocation);
+        }
+    }, [userLocation]);
 
     // Helper to determine danger zone size and color based on severity
     const getZoneOptions = (severity) => {
@@ -289,10 +297,7 @@ function LiveMap({ isAdmin = false }) {
 
                 <MapContainer
 
-                    center={[
-                        20.5937,
-                        78.9629
-                    ]}
+                    center={mapCenter}
 
                     zoom={5}
 

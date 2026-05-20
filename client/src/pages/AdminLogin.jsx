@@ -120,7 +120,8 @@ function AdminLogin() {
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <input
-
+                        id="admin-key"
+                        name="admin-key"
                         type="password"
 
                         placeholder="Enter Admin Key"

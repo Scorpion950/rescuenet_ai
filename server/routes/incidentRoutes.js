@@ -4,6 +4,7 @@ const router = express.Router();
 
 const {
     getNearbyIncidents,
+    distributeIncidentToResponders,
 } = require(
     "../controllers/incidentController"
 );
@@ -11,6 +12,11 @@ const {
 router.post(
     "/nearby-incidents",
     getNearbyIncidents
+);
+
+router.post(
+    "/distribute-incident",
+    distributeIncidentToResponders
 );
 
 module.exports = router;

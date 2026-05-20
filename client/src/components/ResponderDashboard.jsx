@@ -102,11 +102,11 @@ function ResponderDashboard({
 
     }, [responderType]);
 
-    // Real-time notification listener
+    // Real-time notification listener for SOS alerts
     useEffect(() => {
         const q = query(
-            collection(db, "reports"),
-            where("department", "==", responderType)
+            collection(db, "sosAlerts"),
+            where("services", "array-contains", responderType)
         );
 
         const unsubscribe = onSnapshot(
@@ -116,7 +116,7 @@ function ResponderDashboard({
                     snapshot.docChanges().forEach((change) => {
                         if (change.type === "added") {
                             const newIncident = change.doc.data();
-                            toast.error(`🚨 NEW EMERGENCY ASSIGNED: ${newIncident.type || 'Incident'}!`, {
+                            toast.error(`🚨 NEW EMERGENCY ASSIGNED: ${newIncident.type || (newIncident.services || []).join(', ') || 'Incident'}!`, {
                                 duration: 10000,
                                 position: 'top-right',
                                 style: {
@@ -131,7 +131,13 @@ function ResponderDashboard({
                                 fetch(`${API_BASE_URL}/responder-incidents/${responderType}`, {
                                     headers: { "x-responder-key": localStorage.getItem("responderType") }
                                 }).then(res => res.json()).then(data => {
-                                    setIncidents(data.incidents || []);
+                                    let incidentsList = data.incidents || [];
+                                    incidentsList.sort((a, b) => {
+                                        const timeA = a.createdAt?._seconds || a.createdAt?.seconds || 0;
+                                        const timeB = b.createdAt?._seconds || b.createdAt?.seconds || 0;
+                                        return timeB - timeA;
+                                    });
+                                    setIncidents(incidentsList);
                                 }).catch(console.error);
                             }, 1000);
                         }
@@ -150,6 +156,8 @@ function ResponderDashboard({
 
         return () => unsubscribe();
     }, [isInitialLoad, responderType]);
+
+    
 
     // Loading State
     if (loading) {

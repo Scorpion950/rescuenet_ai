@@ -78,16 +78,43 @@ function SOS() {
 
             setLoading(true);
 
-            // Get user location
-            navigator.geolocation.getCurrentPosition(
+            // Get user location (with permission check + longer timeout)
+            const getLocation = () => new Promise((resolve, reject) => {
+                // If Permissions API is available, check first for a clearer UX
+                if (navigator.permissions && navigator.permissions.query) {
+                    navigator.permissions.query({ name: 'geolocation' }).then((perm) => {
+                        if (perm.state === 'denied') {
+                            reject({ code: 1, message: 'Location permission denied' });
+                            return;
+                        }
+                        // Ask for location
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 20000,
+                            maximumAge: 0,
+                        });
+                    }).catch(() => {
+                        // Fallback to direct getCurrentPosition if Permissions API unavailable or errors
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 20000,
+                            maximumAge: 0,
+                        });
+                    });
+                } else {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 20000,
+                        maximumAge: 0,
+                    });
+                }
+            });
 
-                async (position) => {
+            try {
+                const position = await getLocation();
 
-                    const latitude =
-                        position.coords.latitude;
-
-                    const longitude =
-                        position.coords.longitude;
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
 
                     // Reverse Geocoding
                     const geoResponse =
@@ -153,29 +180,23 @@ function SOS() {
 
                     setLoading(false);
 
-                },
+            } catch (error) {
+                console.error("SOS ERROR:", error);
+                setLoading(false);
 
-                // Location Error
-                (error) => {
-
-                    console.error(error);
-
-                    setLoading(false);
-
-                    alert(
-                        "Location access failed"
-                    );
-
-                },
-
-                // Faster Location Options
-                {
-                    enableHighAccuracy: false,
-                    timeout: 5000,
-                    maximumAge: 60000,
+                // Friendly, actionable messages
+                if (error && error.code === 1) {
+                    alert("Location permission denied. Please enable location permissions for this site and try again.");
+                } else if (error && error.code === 2) {
+                    alert("Location unavailable. Try moving to an open area or check device location settings.");
+                } else if (error && error.code === 3) {
+                    alert("Location request timed out. Please ensure your device has a location source (GPS/Wi‑Fi) and try again.");
+                } else {
+                    alert("Location access failed. Please enable location services and try again.");
                 }
 
-            );
+                return;
+            }
 
         } catch (error) {
 
@@ -208,9 +229,11 @@ function SOS() {
                 <div className="space-y-4">
 
                     {/* Police */}
-                    <label className="flex items-center gap-3 text-lg">
+                    <label htmlFor="police-checkbox" className="flex items-center gap-3 text-lg">
 
                         <input
+                            id="police-checkbox"
+                            name="police"
                             type="checkbox"
                             value="Police"
                             onChange={handleServiceChange}
@@ -221,9 +244,11 @@ function SOS() {
                     </label>
 
                     {/* Ambulance */}
-                    <label className="flex items-center gap-3 text-lg">
+                    <label htmlFor="ambulance-checkbox" className="flex items-center gap-3 text-lg">
 
                         <input
+                            id="ambulance-checkbox"
+                            name="ambulance"
                             type="checkbox"
                             value="Ambulance"
                             onChange={handleServiceChange}
@@ -234,9 +259,11 @@ function SOS() {
                     </label>
 
                     {/* Fire Brigade */}
-                    <label className="flex items-center gap-3 text-lg">
+                    <label htmlFor="fire-checkbox" className="flex items-center gap-3 text-lg">
 
                         <input
+                            id="fire-checkbox"
+                            name="fire"
                             type="checkbox"
                             value="Fire Brigade"
                             onChange={handleServiceChange}

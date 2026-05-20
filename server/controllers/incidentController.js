@@ -119,6 +119,95 @@ const getNearbyIncidents = async (
 
 };
 
+// Distribute incident to nearby responders
+const distributeIncidentToResponders = async (
+    req,
+    res
+) => {
+    try {
+        const {
+            reportId,
+            latitude,
+            longitude,
+            type,
+            severity,
+        } = req.body;
+
+        if (!reportId || !latitude || !longitude) {
+            return res.status(400).json({
+                error: "Missing required fields: reportId, latitude, longitude",
+            });
+        }
+
+        // Find all responder stations data
+        const stationsData = require("../data/stations");
+        const nearbyStations = [];
+
+        // Calculate distances to stations
+        for (const station of stationsData) {
+            const distance = calculateDistance(
+                latitude,
+                longitude,
+                station.latitude,
+                station.longitude
+            );
+
+            // Within 5 KM radius
+            if (distance <= 5) {
+                nearbyStations.push({
+                    ...station,
+                    distance: distance.toFixed(2),
+                });
+            }
+        }
+
+        // Determine responder types based on incident type
+        let responderTypes = ["ambulance"];
+        if (type && type.toLowerCase().includes("fire")) {
+            responderTypes.push("fire");
+        }
+        if (type && (type.toLowerCase().includes("crime") || type.toLowerCase().includes("accident"))) {
+            responderTypes.push("police");
+        }
+
+        // Create distribution records for each responder type
+        for (const responderType of responderTypes) {
+            const filteredStations = nearbyStations.filter(
+                s => s.type === responderType
+            );
+
+            if (filteredStations.length > 0) {
+                // Create a distribution record in a new collection
+                await db.collection("incident_distributions").add({
+                    reportId,
+                    responderType,
+                    stations: filteredStations,
+                    latitude,
+                    longitude,
+                    type,
+                    severity,
+                    status: "PENDING",
+                    createdAt: new Date(),
+                    acknowledgedBy: [],
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: "Incident distributed to nearby responders",
+            nearbyStations,
+        });
+
+    } catch (error) {
+        console.error("Distribution error:", error);
+        res.status(500).json({
+            error: "Failed to distribute incident",
+        });
+    }
+};
+
 module.exports = {
     getNearbyIncidents,
+    distributeIncidentToResponders,
 };

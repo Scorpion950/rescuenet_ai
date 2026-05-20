@@ -158,7 +158,8 @@ function ResponderLogin() {
                 <form onSubmit={handleLogin} className="space-y-6">
                     {/* Department */}
                     <select
-
+                        id="department"
+                        name="department"
                         value={department}
 
                         onChange={(e) =>
@@ -193,7 +194,8 @@ function ResponderLogin() {
 
                     {/* Password */}
                     <input
-
+                        id="responder-password"
+                        name="responder-password"
                         type="password"
 
                         placeholder="Enter Password"

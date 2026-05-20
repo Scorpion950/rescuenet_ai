@@ -1,34 +1,46 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useState } from "react";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import { useLocation } from "../../context/LocationContext";
 
 function UserProtectedRoute({ children }) {
 
-    const { isAuthenticated, isLoading, loginWithRedirect, user } = useAuth0();
+    const navigate = useNavigate();
     const { userLocation } = useLocation();
     const [showPhoneModal, setShowPhoneModal] = useState(false);
     const [phone, setPhone] = useState("");
     const [checking, setChecking] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Redirect to Auth0 login if not authenticated
+    // Check if user is authenticated
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
-            loginWithRedirect();
-        }
-    }, [isLoading, isAuthenticated, loginWithRedirect]);
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            if (!user) {
+                navigate("/");
+            } else {
+                setIsAuthenticated(true);
+                checkUserProfile(user);
+            }
+        });
+        return () => unsubscribe();
+    }, [navigate]);
 
     // Check if user already has a phone number stored
     useEffect(() => {
-        if (isAuthenticated && user) {
-            checkUserProfile();
+        if (isAuthenticated) {
+            const unsubscribe = auth.onAuthStateChanged((user) => {
+                if (user) {
+                    checkUserProfile(user);
+                }
+            });
+            return () => unsubscribe();
         }
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated]);
 
-    const checkUserProfile = async () => {
+    const checkUserProfile = async (user) => {
         try {
-            const userId = user.sub.replace(/\|/g, "_");
+            const userId = user.uid;
             const userDoc = await getDoc(doc(db, "users", userId));
 
             if (!userDoc.exists() || !userDoc.data().phone) {
@@ -48,7 +60,13 @@ function UserProtectedRoute({ children }) {
         }
 
         try {
-            const userId = user.sub.replace(/\|/g, "_");
+            const user = auth.currentUser;
+            if (!user) {
+                alert("User not authenticated. Please try again.");
+                return;
+            }
+
+            const userId = user.uid;
 
             // Use the live location from context if available
             const latitude = userLocation ? userLocation[0] : null;
@@ -57,7 +75,7 @@ function UserProtectedRoute({ children }) {
             await setDoc(
                 doc(db, "users", userId),
                 {
-                    name: user.name || "",
+                    name: user.displayName || "",
                     email: user.email || "",
                     phone: phone.trim(),
                     latitude,
@@ -75,7 +93,7 @@ function UserProtectedRoute({ children }) {
     };
 
     // Loading state
-    if (isLoading || (isAuthenticated && checking)) {
+    if (checking) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
@@ -89,7 +107,7 @@ function UserProtectedRoute({ children }) {
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center text-white text-xl">
-                Redirecting to secure login...
+                Redirecting to login...
             </div>
         );
     }

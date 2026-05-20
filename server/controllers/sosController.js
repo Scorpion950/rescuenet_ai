@@ -23,6 +23,7 @@ const sendSOS = async (req, res) => {
 
         } = req.body;
 
+
         if (
 
             !services ||
@@ -155,18 +156,18 @@ const sendSOS = async (req, res) => {
 
         });
 
-    } catch (error) {
+    }catch (error) {
 
-        console.error(error);
+    console.error("SOS ERROR:", error);
 
-        res.status(500).json({
+    res.status(500).json({
 
-            error:
-                "Failed to send SOS",
+        error:
+            "Failed to send SOS",
 
-        });
+    });
 
-    }
+}
 
 };
 

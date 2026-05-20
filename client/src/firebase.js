@@ -17,6 +17,21 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // Sign in anonymously by default so Live Map can read data securely
-signInAnonymously(auth).catch((error) => {
-    console.warn("Firebase Anonymous Auth failed (ensure it's enabled in Firebase Console):", error);
-});
+// Wrap with more helpful guidance if the request is blocked (403)
+(async () => {
+    try {
+        await signInAnonymously(auth);
+    } catch (error) {
+        console.warn("Firebase Anonymous Auth failed (ensure it's enabled in Firebase Console):", error);
+
+        // If requests are blocked with a 403 from identitytoolkit, provide actionable guidance
+        if (error && error.code && error.message && error.message.includes('are-blocked')) {
+            console.error(
+                "Firebase identitytoolkit requests are blocked. Check the following:\n" +
+                "1) In Firebase Console -> Authentication, enable Anonymous sign-in or the provider you're using.\n" +
+                "2) In Google Cloud Console -> APIs & Services -> Credentials, ensure your API key allows identitytoolkit calls or add appropriate HTTP referrers (e.g., http://localhost:5173).\n" +
+                "3) Ensure Firebase Auth / Identity Toolkit APIs are enabled for the project.\n"
+            );
+        }
+    }
+})();

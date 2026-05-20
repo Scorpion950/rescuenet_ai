@@ -12,16 +12,16 @@ const getResponderIncidents =
                 type,
             } = req.params;
 
-            // Fetch SOS alerts
-            const snapshot =
+            const incidents = [];
+
+            // Fetch SOS alerts for this responder type
+            const sosSnapshot =
 
                 await db
                     .collection("sosAlerts")
                     .get();
 
-            const incidents = [];
-
-            snapshot.forEach((doc) => {
+            sosSnapshot.forEach((doc) => {
 
                 const data =
                     doc.data();
@@ -36,7 +36,7 @@ const getResponderIncidents =
                     incidents.push({
 
                         id: doc.id,
-
+                        source: "sos",
                         ...data,
 
                     });
@@ -44,6 +44,31 @@ const getResponderIncidents =
                 }
 
             });
+
+            // Fetch distributed incidents for this responder type
+            try {
+                const distSnapshot = await db
+                    .collection("incident_distributions")
+                    .where("responderType", "==", type)
+                    .get();
+
+                distSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    
+                    // Only include pending distributions
+                    if (data.status !== "RESOLVED") {
+                        incidents.push({
+                            id: doc.id,
+                            source: "incident",
+                            reportId: data.reportId,
+                            ...data,
+                        });
+                    }
+                });
+            } catch (distError) {
+                console.error("Error fetching distributed incidents:", distError);
+                // Continue anyway, at least serve SOS alerts
+            }
 
             res.json({
 

@@ -195,17 +195,19 @@ function ReportCard({ report, deleteReport }) {
             {/* ─────────────────────────────────────────────────────────────── */}
 
             {/* Media */}
-            {report.mediaUrls && report.mediaUrls.length > 0 && (
+            {((report.mediaUrls && report.mediaUrls.length > 0) || (report.media && report.media.length > 0)) && (
                 <div className="mt-5 space-y-4">
-                    {report.mediaUrls.map((media, index) =>
-                        media.includes("/video/") ? (
+                    {((report.mediaUrls && report.mediaUrls.length > 0) ? report.mediaUrls : report.media).map((mediaItem, index) => {
+                        const url = typeof mediaItem === "string" ? mediaItem : mediaItem?.url;
+                        const type = typeof mediaItem === "object" && mediaItem?.type ? mediaItem.type : url?.match(/\.(mp4|webm|mov)$/i) ? "video" : "image";
+                        return type === "video" ? (
                             <video key={index} controls className="rounded-xl w-full max-h-96 object-contain bg-black/20">
-                                <source src={media} />
+                                <source src={url} />
                             </video>
                         ) : (
-                            <img key={index} src={media} alt="Disaster" className="rounded-xl w-full max-h-96 object-contain bg-black/20" />
-                        )
-                    )}
+                            <img key={index} src={url} alt="Disaster" className="rounded-xl w-full max-h-96 object-contain bg-black/20" />
+                        );
+                    })}
                 </div>
             )}
 
