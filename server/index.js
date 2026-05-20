@@ -59,7 +59,23 @@ require("./config/firebase");
 const app = express();
 
 /* MIDDLEWARE */
-app.use(cors());
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',      // Vite dev
+  'http://localhost:3000',      // React dev
+  'https://rescuenet-ai.netlify.app',  // Production
+  'https://rescuenet-ai-4f7e9.web.app' // Firebase hosting
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS policy does not allow access from origin ${origin}`));
+  },
+  credentials: true
+}));
 
 app.use(express.json());
 
