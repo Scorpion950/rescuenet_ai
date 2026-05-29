@@ -27,6 +27,8 @@ function ResponderLogin() {
     const [password, setPassword] =
         useState("");
 
+    const [showPassword, setShowPassword] = useState(false);
+
     // Login
     const handleLogin = async (e) => {
         if (e) e.preventDefault();
@@ -193,26 +195,35 @@ function ResponderLogin() {
                     </select>
 
                     {/* Password */}
-                    <input
-                        id="responder-password"
-                        name="responder-password"
-                        type="password"
+                    <div className="relative">
+                        <input
+                            id="responder-password"
+                            name="responder-password"
+                            type={showPassword ? "text" : "password"}
 
-                        placeholder="Enter Password"
+                            placeholder="Enter Password"
 
-                        value={password}
+                            value={password}
 
-                        onChange={(e) =>
+                            onChange={(e) =>
 
-                            setPassword(
-                                e.target.value
-                            )
+                                setPassword(
+                                    e.target.value
+                                )
 
-                        }
+                            }
 
-                        className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-12"
 
-                    />
+                        />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        >
+                            {showPassword ? "🙈" : "👁️"}
+                        </button>
+                    </div>
 
                     {/* Login */}
                     <button
