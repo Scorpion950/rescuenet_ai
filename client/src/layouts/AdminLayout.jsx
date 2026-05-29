@@ -12,7 +12,7 @@ function AdminLayout() {
     // Logout
     const logout = () => {
 
-        localStorage.removeItem(
+        sessionStorage.removeItem(
             "isAdmin"
         );
 

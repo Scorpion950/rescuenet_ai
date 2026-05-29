@@ -75,7 +75,7 @@ function AdminLogin() {
             }
 
             // Save admin session
-            localStorage.setItem(
+            sessionStorage.setItem(
 
                 "isAdmin",
 
