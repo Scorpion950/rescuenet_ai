@@ -28,10 +28,8 @@ const analyzeReport = async (
             : [];
 
         const modelCandidates = [
-            process.env.GEMINI_MODEL,
-            "gemini-1.5",
-            "gemini-1.5-pro",
-            "gemini-1.0",
+            process.env.GEMINI_MODEL || "gemini-2.0-flash",  // Primary
+            "gemini-1.5-flash",                               // Fallback if quota hit
         ].filter(Boolean);
 
         let result;

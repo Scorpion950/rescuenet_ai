@@ -354,14 +354,6 @@ For issues, questions, or feature requests:
 
 ---
 
-## Author
-
-**Scorpion950** - [GitHub Profile](https://github.com/Scorpion950)
-
----
-
-**Last Updated:** May 2026
-
 ## 👨‍💻 Development Team
 Developed with ❤️ by the **RescueNet AI Team** for a professional Hackathon presentation.
 

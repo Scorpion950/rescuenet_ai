@@ -114,7 +114,8 @@ function MapPopup({
                                 <video
                                     key={index}
                                     controls
-                                    className="rounded-xl w-full max-h-64 object-contain bg-black/20"
+                                    className="rounded-xl w-full max-h-64 object-contain bg-black/20 cursor-pointer"
+                                    onClick={(e) => { e.preventDefault(); window.open(url, '_blank'); }}
                                 >
                                     <source src={url} />
                                 </video>
@@ -123,7 +124,8 @@ function MapPopup({
                                     key={index}
                                     src={url}
                                     alt="Disaster"
-                                    className="rounded-xl w-full max-h-64 object-contain bg-black/20"
+                                    className="rounded-xl w-full max-h-64 object-contain bg-black/20 cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={(e) => { e.preventDefault(); window.open(url, '_blank'); }}
                                 />
                             );
                         })}

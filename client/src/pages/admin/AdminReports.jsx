@@ -1,29 +1,38 @@
-import {
-    useEffect,
-    useState,
-} from "react";
-
-import {
-    collection,
-    onSnapshot,
-    deleteDoc,
-    doc,
-} from "firebase/firestore";
-
+import { useEffect, useState } from "react";
+import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
 
-function AdminReports() {
+const SEVERITY_CONFIG = {
+    CRITICAL: { color: "bg-red-500/20 text-red-300 border-red-500/40", dot: "bg-red-500" },
+    HIGH:     { color: "bg-orange-500/20 text-orange-300 border-orange-500/40", dot: "bg-orange-500" },
+    MEDIUM:   { color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/40", dot: "bg-yellow-400" },
+    LOW:      { color: "bg-slate-500/20 text-slate-300 border-slate-500/40", dot: "bg-slate-400" },
+};
 
+const STATUS_CONFIG = {
+    "VERIFIED & LIVE": { color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+    "PENDING":         { color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" },
+    "RESOLVED":        { color: "bg-slate-500/20 text-slate-400 border-slate-500/30" },
+    "NOT SURE":        { color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
+};
+
+function AdminReports() {
     const [reports, setReports] = useState([]);
+    const [filter, setFilter] = useState("ALL");
+    const [deletingId, setDeletingId] = useState(null);
 
     const deleteReport = async (id) => {
+        if (!window.confirm("Delete this incident report permanently?")) return;
+        setDeletingId(id);
         try {
             await deleteDoc(doc(db, "reports", id));
-            alert("Report deleted successfully");
+            toast.success("Report deleted");
         } catch (error) {
             console.error(error);
-            alert("Failed to delete report");
+            toast.error("Failed to delete report");
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -31,201 +40,177 @@ function AdminReports() {
         const unsubscribe = onSnapshot(
             collection(db, "reports"),
             (snapshot) => {
-                const fetchedReports = [];
-                snapshot.forEach((doc) => {
-                    fetchedReports.push({ id: doc.id, ...doc.data() });
-                });
-                fetchedReports.sort((a, b) => {
-                    const timeA = a.createdAt?.seconds || 0;
-                    const timeB = b.createdAt?.seconds || 0;
-                    return timeB - timeA;
-                });
-                setReports(fetchedReports);
+                const fetched = [];
+                snapshot.forEach((doc) => fetched.push({ id: doc.id, ...doc.data() }));
+                fetched.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                setReports(fetched);
             },
             (error) => {
                 console.error("Firestore Reports snapshot error:", error);
-                toast.error("Database connection blocked. Please disable your Ad-Blocker or Brave Shield to load incident reports!", {
-                    duration: 10000,
-                    position: "top-center"
-                });
+                toast.error("Real-time feed failed. Check your network.", { duration: 8000 });
             }
         );
         return () => unsubscribe();
     }, []);
 
+    const filters = ["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW", "PENDING", "VERIFIED & LIVE", "RESOLVED"];
+    const filtered = filter === "ALL" ? reports : reports.filter(r => r.severity === filter || r.status === filter);
+
     return (
-        <div className="p-8 min-h-screen bg-mesh text-white relative">
-            <div className="absolute inset-0 bg-black/40 z-0"></div>
+        <div className="min-h-screen p-6 md:p-10 text-white">
 
-            <div className="relative z-10">
-                <h1 className="text-6xl font-extrabold mb-12 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 drop-shadow-lg">
-                    Incident Reports
-                </h1>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start animate-fade-in-up">
-                    {reports.length === 0 ? (
-                        <div className="glass-panel p-10 rounded-3xl text-center text-gray-300 shadow-2xl border border-white/10 break-inside-avoid">
-                            <h2 className="text-2xl font-bold">No disaster reports available.</h2>
-                        </div>
-                    ) : (
-                        reports.map((report) => (
-                            <ReportCard
-                                key={report.id}
-                                report={report}
-                                deleteReport={deleteReport}
-                            />
-                        ))
-                    )}
+            {/* Header */}
+            <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-1">RescueNet AI — Admin</p>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-white">Incident Reports</h1>
+                </div>
+                <div className="glass-panel px-5 py-2.5 rounded-xl border border-white/10 text-center">
+                    <p className="text-2xl font-black text-blue-400">{reports.length}</p>
+                    <p className="text-xs text-slate-400">Total Reports</p>
                 </div>
             </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 mb-8">
+                {filters.map((f) => (
+                    <button key={f} onClick={() => setFilter(f)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filter === f
+                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40"
+                            : "bg-slate-800/60 border-white/10 text-slate-400 hover:border-blue-500/40 hover:text-white"}`}>
+                        {f}
+                    </button>
+                ))}
+            </div>
+
+            {filtered.length === 0 ? (
+                <div className="glass-panel rounded-2xl border border-white/10 p-16 text-center">
+                    <div className="text-6xl mb-4">📋</div>
+                    <h2 className="text-2xl font-bold text-slate-300">No reports found</h2>
+                    <p className="text-slate-500 mt-2">Try a different filter or wait for new incidents.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 animate-fade-in-up">
+                    {filtered.map((report) => (
+                        <ReportCard key={report.id} report={report} deleteReport={deleteReport} deletingId={deletingId} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
 
-// ── Per-card component so each card has its own map toggle state ──────────────
-function ReportCard({ report, deleteReport }) {
+function ReportCard({ report, deleteReport, deletingId }) {
     const [showMap, setShowMap] = useState(false);
     const hasCoords = report.latitude != null && report.longitude != null;
+    const sevCfg = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG.LOW;
+    const statusCfg = STATUS_CONFIG[report.status] || { color: "bg-slate-500/20 text-slate-400 border-slate-500/30" };
 
     return (
-        <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10 hover:border-blue-500/30 transition-colors duration-300 break-inside-avoid">
+        <div className="glass-panel rounded-2xl border border-white/10 hover:border-blue-500/30 transition-all duration-300 overflow-hidden flex flex-col">
 
-            {/* Header — Type + Department */}
-            <div className="flex justify-between items-start mb-6">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">
-                    {report.type}
-                </h2>
+            {/* Color top strip by severity */}
+            <div className={`h-1 w-full ${sevCfg.dot}`}></div>
+
+            <div className="p-6 flex flex-col gap-4 flex-1">
+
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <h2 className="text-xl font-extrabold text-white">{report.type}</h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            {report.createdAt?.seconds
+                                ? new Date(report.createdAt.seconds * 1000).toLocaleString("en-IN", { hour12: true, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+                                : "Unknown time"}
+                        </p>
+                    </div>
+                    <div className="flex flex-col gap-1.5 items-end">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${sevCfg.color}`}>
+                            {report.severity}
+                        </span>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${statusCfg.color}`}>
+                            {report.status}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Location */}
+                <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-900/50 rounded-xl px-3 py-2 border border-white/5">
+                    <span>📍</span>
+                    <span className="truncate">{report.location || "Unknown location"}</span>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">{report.description}</p>
+
+                {/* Department */}
                 {report.department && (
-                    <span className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg shadow-blue-900/20">
-                        {report.department}
+                    <span className="self-start text-xs font-bold px-3 py-1 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30">
+                        🚔 {report.department}
                     </span>
                 )}
-            </div>
 
-            {/* Location name */}
-            <p>
-                <span className="font-bold">Location:</span>{" "}{report.location}
-            </p>
-
-            {/* Severity */}
-            <p>
-                <span className="font-bold">Severity:</span>{" "}{report.severity}
-            </p>
-
-            {/* Description */}
-            <p className="mt-3 text-gray-300">{report.description}</p>
-
-            {/* Verification votes */}
-            <div className="mt-6 flex flex-wrap gap-4">
-                <div className="bg-green-500/20 text-green-400 border border-green-500/30 px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-green-900/20">
-                    ✅ Yes: {report.verifiedYes || 0}
+                {/* Votes */}
+                <div className="flex gap-2 flex-wrap">
+                    {[
+                        { label: "Yes", val: report.verifiedYes || 0, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
+                        { label: "No", val: report.verifiedNo || 0, color: "text-red-400 bg-red-500/10 border-red-500/30" },
+                        { label: "Unsure", val: report.verifiedUnsure || 0, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30" },
+                    ].map(v => (
+                        <span key={v.label} className={`text-xs font-bold px-3 py-1 rounded-full border ${v.color}`}>
+                            {v.label}: {v.val}
+                        </span>
+                    ))}
                 </div>
-                <div className="bg-red-500/20 text-red-400 border border-red-500/30 px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-red-900/20">
-                    ❌ No: {report.verifiedNo || 0}
-                </div>
-                <div className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-yellow-900/20">
-                    🤔 Unsure: {report.verifiedUnsure || 0}
-                </div>
-            </div>
 
-            {/* Status */}
-            <div className="mt-4">
-                <span className="font-bold">Status:</span>{" "}{report.status}
-            </div>
-
-            {/* ── LOCATION MAP ─────────────────────────────────────────────── */}
-            <div className="mt-5">
-                {hasCoords ? (
-                    <>
-                        {/* Toggle button */}
-                        <button
-                            onClick={() => setShowMap((prev) => !prev)}
-                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border ${
-                                showMap
-                                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40 shadow-inner"
-                                    : "bg-slate-800/60 text-slate-300 border-white/10 hover:bg-slate-700/60 hover:border-blue-500/30"
-                            }`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            {showMap ? "Hide Map" : "📍 View on Map"}
-                        </button>
-
-                        {/* Expandable map panel */}
-                        {showMap && (
-                            <div className="mt-3 rounded-2xl overflow-hidden border border-blue-500/30 shadow-xl shadow-blue-900/20">
-                                {/* Coords bar + Google Maps link */}
-                                <div className="bg-slate-900/90 px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap">
-                                    <span className="text-xs font-mono text-slate-400">
-                                        📍 {Number(report.latitude).toFixed(5)}, {Number(report.longitude).toFixed(5)}
-                                    </span>
-                                    <a
-                                        href={`https://www.google.com/maps?q=${report.latitude},${report.longitude}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
-                                    >
-                                        Open in Google Maps ↗
-                                    </a>
-                                </div>
-
-                                {/* OSM iframe — no eval, no CSP risk */}
-                                <iframe
-                                    title={`map-${report.id}`}
-                                    width="100%"
-                                    height="220"
-                                    loading="lazy"
-                                    style={{ border: 0, display: "block" }}
-                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.longitude - 0.01}%2C${report.latitude - 0.01}%2C${report.longitude + 0.01}%2C${report.latitude + 0.01}&layer=mapnik&marker=${report.latitude}%2C${report.longitude}`}
-                                />
-                            </div>
+                {/* Media */}
+                {report.mediaUrls?.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                        {report.mediaUrls.slice(0, 2).map((item, i) => {
+                            const url = typeof item === "string" ? item : item?.url;
+                            const isVideo = item?.type === "video" || url?.match(/\.(mp4|webm|mov)$/i);
+                            return isVideo ? (
+                                <video key={i} controls className="rounded-xl w-full max-h-32 object-cover bg-black/30 cursor-pointer" onClick={(e) => { e.preventDefault(); window.open(url, '_blank'); }}>
+                                    <source src={url} />
+                                </video>
+                            ) : (
+                                <img key={i} src={url} alt="Evidence" className="rounded-xl w-full h-24 object-cover bg-black/30 cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => { e.preventDefault(); window.open(url, '_blank'); }} />
+                            );
+                        })}
+                        {report.mediaUrls.length > 2 && (
+                            <span className="text-xs text-slate-500 col-span-2">+{report.mediaUrls.length - 2} more files</span>
                         )}
-                    </>
-                ) : (
-                    /* No GPS fallback */
-                    <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-800/40 px-4 py-2.5 rounded-xl border border-white/5">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                        No GPS coordinates recorded
                     </div>
                 )}
+
+                {/* Map toggle */}
+                {hasCoords && (
+                    <div>
+                        <button onClick={() => setShowMap(p => !p)}
+                            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border transition-all ${showMap ? "bg-blue-500/20 text-blue-300 border-blue-500/40" : "bg-slate-800/60 text-slate-400 border-white/10 hover:border-blue-500/30"}`}>
+                            {showMap ? "▲ Hide Map" : "📍 View on Map"}
+                        </button>
+                        {showMap && (
+                            <div className="mt-2 rounded-xl overflow-hidden border border-blue-500/20">
+                                <div className="bg-slate-900/90 px-3 py-1.5 flex justify-between items-center">
+                                    <span className="text-xs font-mono text-slate-500">{Number(report.latitude).toFixed(4)}, {Number(report.longitude).toFixed(4)}</span>
+                                    <a href={`https://www.google.com/maps?q=${report.latitude},${report.longitude}`} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs text-blue-400 hover:text-blue-300">Open Maps ↗</a>
+                                </div>
+                                <iframe title={`map-${report.id}`} width="100%" height="200" loading="lazy"
+                                    style={{ border: 0, display: "block" }}
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.longitude - 0.01}%2C${report.latitude - 0.01}%2C${report.longitude + 0.01}%2C${report.latitude + 0.01}&layer=mapnik&marker=${report.latitude}%2C${report.longitude}`} />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Delete */}
+                <button onClick={() => deleteReport(report.id)} disabled={deletingId === report.id}
+                    className="mt-auto w-full py-2.5 rounded-xl font-bold text-sm border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50">
+                    {deletingId === report.id ? "Deleting…" : "🗑 Delete Report"}
+                </button>
             </div>
-            {/* ─────────────────────────────────────────────────────────────── */}
-
-            {/* Media */}
-            {((report.mediaUrls && report.mediaUrls.length > 0) || (report.media && report.media.length > 0)) && (
-                <div className="mt-5 space-y-4">
-                    {((report.mediaUrls && report.mediaUrls.length > 0) ? report.mediaUrls : report.media).map((mediaItem, index) => {
-                        const url = typeof mediaItem === "string" ? mediaItem : mediaItem?.url;
-                        const type = typeof mediaItem === "object" && mediaItem?.type ? mediaItem.type : url?.match(/\.(mp4|webm|mov)$/i) ? "video" : "image";
-                        return type === "video" ? (
-                            <video key={index} controls className="rounded-xl w-full max-h-96 object-contain bg-black/20">
-                                <source src={url} />
-                            </video>
-                        ) : (
-                            <img key={index} src={url} alt="Disaster" className="rounded-xl w-full max-h-96 object-contain bg-black/20" />
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Timestamp */}
-            <div className="mt-5">
-                <span className="font-bold">Reported At:</span>{" "}
-                {report.createdAt?.seconds
-                    ? new Date(report.createdAt.seconds * 1000).toLocaleString()
-                    : "Unknown Time"}
-            </div>
-
-            {/* Delete */}
-            <button
-                onClick={() => deleteReport(report.id)}
-                className="btn-premium mt-8 w-full bg-gradient-to-r from-red-700 to-red-900 hover:from-red-600 hover:to-red-800 px-6 py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-red-900/50"
-            >
-                Delete Report
-            </button>
         </div>
     );
 }

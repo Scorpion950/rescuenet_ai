@@ -152,12 +152,24 @@ const distributeIncidentToResponders = async (
                 station.longitude
             );
 
-            // Within 5 KM radius
-            if (distance <= 5) {
+            // Within 20 KM radius
+            if (distance <= 20) {
                 nearbyStations.push({
                     ...station,
                     distance: distance.toFixed(2),
                 });
+            }
+        }
+
+        // Fallback: if still none found in 20 km, pick the nearest station of each type
+        if (nearbyStations.length === 0) {
+            const typesNeeded = ["Police", "Ambulance", "Fire Brigade"];
+            for (const t of typesNeeded) {
+                const ofType = stationsData
+                    .map(s => ({ ...s, distance: calculateDistance(latitude, longitude, s.latitude, s.longitude).toFixed(2) }))
+                    .filter(s => s.type === t)
+                    .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+                if (ofType.length > 0) nearbyStations.push(ofType[0]);
             }
         }
 

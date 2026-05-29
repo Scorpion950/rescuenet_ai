@@ -51,9 +51,21 @@ const sendNearbyAlerts = async (req, res) => {
                     userData.longitude
                 );
 
-                // Alert users within 5KM radius
+        // Alert users within 5KM radius
                 if (distanceKm <= 5) {
-                    nearbyPhones.push(userData.phone);
+                    // Normalize to E.164 format required by Twilio
+                    let phone = userData.phone.trim().replace(/[\s\-\(\)]/g, "");
+                    if (phone.startsWith("0")) phone = phone.slice(1); // remove leading 0
+                    if (!phone.startsWith("+")) {
+                        // Assume India (+91) if 10-digit number
+                        phone = phone.length === 10 ? `+91${phone}` : `+${phone}`;
+                    }
+                    // Basic sanity check — skip obviously invalid numbers
+                    if (phone.length >= 10) {
+                        nearbyPhones.push(phone);
+                    } else {
+                        console.warn(`[NearbyAlerts] Skipping invalid phone: ${userData.phone}`);
+                    }
                 }
             }
         });

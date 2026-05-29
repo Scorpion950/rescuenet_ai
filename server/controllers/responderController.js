@@ -96,92 +96,55 @@ const getResponderIncidents =
     };
 
 /* Deploy Incident */
-const deployIncident =
+const deployIncident = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { source } = req.body;
+        
+        const collectionName = source === "incident" ? "incident_distributions" : "sosAlerts";
 
-    async (req, res) => {
+        await db.collection(collectionName).doc(id).update({
+            status: "DEPLOYED",
+        });
 
-        try {
-
-            const {
-                id,
-            } = req.params;
-
-            await db
-                .collection("sosAlerts")
-                .doc(id)
-                .update({
-
-                    status:
-                        "DEPLOYED",
-
-                });
-
-            res.json({
-
-                success: true,
-
-            });
-
-        }
-
-        catch (error) {
-
-            console.error(error);
-
-            res.status(500).json({
-
-                error:
-                    "Deployment failed",
-
-            });
-
-        }
-
-    };
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Deployment failed" });
+    }
+};
 
 /* Resolve Incident */
-const resolveIncident =
+const resolveIncident = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { source } = req.body;
+        
+        const collectionName = source === "incident" ? "incident_distributions" : "sosAlerts";
 
-    async (req, res) => {
+        await db.collection(collectionName).doc(id).update({
+            status: "RESOLVED",
+        });
 
-        try {
-
-            const {
-                id,
-            } = req.params;
-
-            await db
-                .collection("sosAlerts")
-                .doc(id)
-                .update({
-
-                    status:
-                        "RESOLVED",
-
-                });
-
-            res.json({
-
-                success: true,
-
-            });
-
+        // Also update the original report status if it's an incident distribution
+        if (source === "incident") {
+            const distDoc = await db.collection("incident_distributions").doc(id).get();
+            if (distDoc.exists) {
+                const reportId = distDoc.data().reportId;
+                if (reportId) {
+                    await db.collection("reports").doc(reportId).update({
+                        status: "RESOLVED"
+                    });
+                }
+            }
         }
 
-        catch (error) {
-
-            console.error(error);
-
-            res.status(500).json({
-
-                error:
-                    "Resolve failed",
-
-            });
-
-        }
-
-    };
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Resolve failed" });
+    }
+};
 
 module.exports = {
 

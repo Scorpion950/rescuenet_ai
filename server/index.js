@@ -61,18 +61,26 @@ const app = express();
 /* MIDDLEWARE */
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  'http://localhost:5173',      // Vite dev
-  'http://localhost:3000',      // React dev
-  'https://rescuenet-ai.netlify.app',  // Production
+  'http://localhost:5173',           // Vite dev
+  'http://localhost:3000',           // React dev
+  'https://rescuenet-ai.netlify.app', // Netlify production
   'https://rescuenet-ai-4f7e9.web.app' // Firebase hosting
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    // Allow exact matches
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Allow any Vercel deployment (preview + production)
+    if (/^https:\/\/rescuenet[\w-]*\.vercel\.app$/.test(origin)) {
       return callback(null, true);
     }
-    return callback(new Error(`CORS policy does not allow access from origin ${origin}`));
+
+    return callback(new Error(`CORS policy does not allow access from origin: ${origin}`));
   },
   credentials: true
 }));

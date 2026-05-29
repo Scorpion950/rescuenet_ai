@@ -1,83 +1,91 @@
-import { useEffect, useState } from "react";
-import { db, auth } from "../../firebase";
+import { useEffect, useState, useRef } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
+import { db } from "../../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
 import { useLocation } from "../../context/LocationContext";
 
 function UserProtectedRoute({ children }) {
 
-    const navigate = useNavigate();
+    const { isAuthenticated, isLoading, loginWithRedirect, user } = useAuth0();
     const { userLocation } = useLocation();
+
     const [showPhoneModal, setShowPhoneModal] = useState(false);
     const [phone, setPhone] = useState("");
     const [checking, setChecking] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Check if user is authenticated
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-            if (!user) {
-                navigate("/");
-            } else {
-                setIsAuthenticated(true);
-                checkUserProfile(user);
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
+    const hasChecked = useRef(false);
 
-    // Check if user already has a phone number stored
     useEffect(() => {
-        if (isAuthenticated) {
-            const unsubscribe = auth.onAuthStateChanged((user) => {
-                if (user) {
-                    checkUserProfile(user);
-                }
+        // Wait for Auth0 to finish loading
+        if (isLoading) return;
+
+        // Not logged in — redirect to Auth0 login
+        if (!isAuthenticated) {
+            loginWithRedirect({
+                appState: { returnTo: window.location.pathname },
             });
-            return () => unsubscribe();
+            return;
         }
-    }, [isAuthenticated]);
 
-    const checkUserProfile = async (user) => {
-        try {
-            const userId = user.uid;
-            const userDoc = await getDoc(doc(db, "users", userId));
+        // Logged in — check Firestore for phone number
+        if (hasChecked.current) return;
+        hasChecked.current = true;
 
-            if (!userDoc.exists() || !userDoc.data().phone) {
-                setShowPhoneModal(true);
+        const checkProfile = async () => {
+            // Auth0 user.sub is the unique user ID (e.g. "google-oauth2|123...")
+            const userId = user.sub.replace("|", "_"); // Firestore doc IDs can't have |
+
+            // Check localStorage cache first to avoid hitting Firestore on every nav
+            const cached = localStorage.getItem(`phone_saved_${userId}`);
+            if (cached === "true") {
+                setChecking(false);
+                return;
             }
-        } catch (err) {
-            console.error("Error checking user profile:", err);
-        } finally {
-            setChecking(false);
-        }
-    };
+
+            try {
+                const userDoc = await getDoc(doc(db, "users", userId));
+                if (userDoc.exists() && userDoc.data().phone) {
+                    localStorage.setItem(`phone_saved_${userId}`, "true");
+                    setShowPhoneModal(false);
+                } else {
+                    setShowPhoneModal(true);
+                }
+            } catch (err) {
+                console.error("Error checking user profile:", err);
+            } finally {
+                setChecking(false);
+            }
+        };
+
+        checkProfile();
+    }, [isLoading, isAuthenticated, user, loginWithRedirect]);
 
     const savePhoneAndLocation = async () => {
-        if (!phone || phone.trim().length < 10) {
-            alert("Please enter a valid phone number with country code (e.g. +919876543210)");
+        // Auto-prepend +91 if user enters 10-digit Indian number without country code
+        let normalized = phone.trim().replace(/[\s\-\(\)]/g, "");
+        if (normalized.startsWith("0")) normalized = normalized.slice(1);
+        if (!normalized.startsWith("+")) {
+            normalized = normalized.length === 10 ? `+91${normalized}` : `+${normalized}`;
+        }
+
+        if (normalized.length < 10) {
+            alert("Please enter a valid phone number (e.g. +91 98765 43210 or 9876543210)");
             return;
         }
 
         try {
-            const user = auth.currentUser;
-            if (!user) {
-                alert("User not authenticated. Please try again.");
-                return;
-            }
-
-            const userId = user.uid;
-
-            // Use the live location from context if available
+            const userId = user.sub.replace("|", "_");
             const latitude = userLocation ? userLocation[0] : null;
             const longitude = userLocation ? userLocation[1] : null;
 
             await setDoc(
                 doc(db, "users", userId),
                 {
-                    name: user.displayName || "",
+                    auth0Id: user.sub,
+                    name: user.name || "",
                     email: user.email || "",
-                    phone: phone.trim(),
+                    picture: user.picture || "",
+                    phone: normalized,
                     latitude,
                     longitude,
                     updatedAt: new Date(),
@@ -85,15 +93,17 @@ function UserProtectedRoute({ children }) {
                 { merge: true }
             );
 
+            localStorage.setItem(`phone_saved_${userId}`, "true");
             setShowPhoneModal(false);
+
         } catch (err) {
             console.error("Error saving profile:", err);
             alert("Failed to save your details. Please try again.");
         }
     };
 
-    // Loading state
-    if (checking) {
+    // Auth0 still loading
+    if (isLoading || (isAuthenticated && checking)) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
@@ -104,19 +114,26 @@ function UserProtectedRoute({ children }) {
         );
     }
 
-    if (!isAuthenticated) {
-        return (
-            <div className="min-h-screen flex items-center justify-center text-white text-xl">
-                Redirecting to login...
-            </div>
-        );
-    }
-
     // Phone number collection modal
     if (showPhoneModal) {
         return (
             <div className="min-h-screen flex items-center justify-center px-4 bg-mesh">
                 <div className="glass-panel p-10 rounded-3xl w-full max-w-md border border-white/10 animate-fade-in-up shadow-2xl">
+
+                    {/* User greeting */}
+                    {user?.picture && (
+                        <div className="flex items-center gap-3 mb-6 p-4 bg-white/5 rounded-2xl border border-white/10">
+                            <img
+                                src={user.picture}
+                                alt={user.name}
+                                className="w-12 h-12 rounded-full ring-2 ring-blue-500/50"
+                            />
+                            <div>
+                                <p className="text-white font-semibold">{user.name}</p>
+                                <p className="text-gray-400 text-xs">{user.email}</p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="text-center mb-6">
                         <div className="text-5xl mb-3">📱</div>
