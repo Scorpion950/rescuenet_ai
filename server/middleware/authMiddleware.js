@@ -1,63 +1,36 @@
-const adminAuth = (
+const db = require("../config/firebase");
+const { normalizeDepartment } = require("../utils/departments");
 
-    req,
-    res,
-    next
+async function requireAuth(req, res, next) {
+  const header = req.get("authorization") || "";
+  const match = /^Bearer\s+(\S+)$/i.exec(header);
+  if (!match) return res.status(401).json({ error: "Sign in to continue." });
 
-) => {
-
-    const adminKey =
-        req.headers["x-admin-key"];
-
-    if (
-
-        adminKey !==
-        process.env.ADMIN_PASSWORD
-
-    ) {
-
-        return res.status(401).json({
-
-            error:
-                "Unauthorized admin access",
-
-        });
-
-    }
-
+  try {
+    const decoded = await db.admin.auth().verifyIdToken(match[1], true);
+    req.auth = {
+      uid: decoded.uid,
+      role: decoded.role || "civilian",
+      department: normalizeDepartment(decoded.department),
+      stationId: decoded.stationId || null,
+    };
     next();
+  } catch {
+    res.status(401).json({ error: "Your session has expired. Sign in again." });
+  }
+}
 
-};
-
-const responderAuth = (
-
-    req,
-    res,
-    next
-
-) => {
-
-    const responderKey =
-        req.headers["x-responder-key"];
-
-    if (!responderKey) {
-
-        return res.status(401).json({
-
-            error:
-                "Unauthorized responder access",
-
-        });
-
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.auth || !roles.includes(req.auth.role)) {
+      return res.status(403).json({ error: "Your account cannot perform this action." });
     }
-
     next();
+  };
+}
 
-};
+const adminAuth = [requireAuth, requireRole("admin")];
+const responderAuth = [requireAuth, requireRole("responder", "admin")];
+const civilianAuth = [requireAuth, requireRole("civilian", "admin")];
 
-module.exports = {
-
-    adminAuth,
-    responderAuth,
-
-};
+module.exports = { requireAuth, requireRole, adminAuth, responderAuth, civilianAuth };

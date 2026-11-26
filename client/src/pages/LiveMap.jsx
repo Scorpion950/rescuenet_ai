@@ -1,455 +1,201 @@
+import { useEffect, useMemo, useState } from "react";
 import {
-    useEffect,
-    useState,
-} from "react";
-
-import MapPopup from
-    "../components/MapPopup";
-
-import {
-    sendVerificationVote,
-} from "../services/verificationService";
-
-import {
-    MapContainer,
-    TileLayer,
-    Marker,
-    Popup,
-    useMap,
-    Circle,
+  Circle, MapContainer, Marker, Popup, TileLayer, useMap,
 } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import { collection, onSnapshot } from "firebase/firestore";
 import L from "leaflet";
-
 import {
-    collection,
-    onSnapshot,
-} from "firebase/firestore";
-
-const userLocationIcon = new L.DivIcon({
-    className: 'user-location-marker',
-    html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite;"></div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11]
-});
-
-function MapUpdater({ center }) {
-    const map = useMap();
-    useEffect(() => {
-        if (center) {
-            map.flyTo(center, 13, { duration: 2 });
-        }
-    }, [center, map]);
-    return null;
-}
-
-function LocateControl({ location }) {
-    const map = useMap();
-    return (
-        <button
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (location) map.flyTo(location, 16, { animate: true, duration: 1.5 });
-            }}
-            style={{
-                position: "absolute",
-                bottom: "88px",
-                right: "10px",
-                zIndex: 1000,
-                width: "40px",
-                height: "40px",
-                background: "white",
-                border: "2px solid rgba(0,0,0,0.12)",
-                borderRadius: "4px",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-            }}
-            title="Your Location"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
-                <path fill="#4285F4" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-            </svg>
-        </button>
-    );
-}
-
-import MarkerClusterGroup from 'react-leaflet-cluster';
-
+  Crosshair, Layers3, MapPinned, Search, ShieldAlert, SlidersHorizontal,
+} from "lucide-react";
+import { useAuth0 } from "@auth0/auth0-react";
 import toast from "react-hot-toast";
-
+import MapPopup from "../components/MapPopup";
+import { apiFetch } from "../services/api";
 import { db } from "../firebase";
-
-import {
-
-    API_BASE_URL,
-
-} from "../utils/constants";
-
 import { useLocation } from "../context/LocationContext";
-
-function LiveMap({ isAdmin = false }) {
-    const { userLocation } = useLocation();
-    const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // Default to India center
-
-    const [reports, setReports] =
-        useState([]);
-        
-    const [showDangerZones, setShowDangerZones] = 
-        useState(false);
-
-    // Update map center when user location changes
-    useEffect(() => {
-        if (userLocation) {
-            setMapCenter(userLocation);
-        }
-    }, [userLocation]);
-
-    // Helper to determine danger zone size and color based on severity
-    const getZoneOptions = (severity) => {
-        switch (severity) {
-            case "CRITICAL":
-                return { radius: 1000, color: "#ef4444", fillColor: "#ef4444", fillOpacity: 0.4 }; // Red, 1KM
-            case "HIGH":
-                return { radius: 500, color: "#f97316", fillColor: "#f97316", fillOpacity: 0.3 }; // Orange, 500m
-            case "MEDIUM":
-            case "LOW":
-                return { radius: 250, color: "#eab308", fillColor: "#eab308", fillOpacity: 0.2 }; // Yellow, 250m
-            default:
-                return { radius: 200, color: "#64748b", fillColor: "#64748b", fillOpacity: 0.2 }; // Gray
-        }
-    };
-
-    // Verify Incident
-    const verifyIncident = async (
-
-        reportId,
-        voteType
-
-    ) => {
-
-        try {
-
-            // Previous vote
-            const previousVote =
-
-                localStorage.getItem(
-
-                    `vote_${reportId}`
-
-                );
-
-            const response =
-
-                await fetch(
-
-                    `${API_BASE_URL}/verify-incident`,
-
-                    {
-
-                        method: "POST",
-
-                        headers: {
-
-                            "Content-Type":
-                                "application/json",
-
-                        },
-
-                        body: JSON.stringify({
-
-                            reportId,
-                            voteType,
-                            previousVote,
-
-                        }),
-
-                    }
-
-                );
-
-            const data =
-                await response.json();
-
-            // Save latest vote
-            localStorage.setItem(
-
-                `vote_${reportId}`,
-
-                voteType
-
-            );
-
-            toast.success(
-                "Vote Updated"
-            );
-
-
-
-        }
-
-        catch (error) {
-
-            console.error(error);
-
-            toast.error(
-                "Vote failed"
-            );
-
-        }
-
-    };
-
-    // Fetch reports realtime
-    useEffect(() => {
-
-        const unsubscribe =
-            onSnapshot(
-
-                collection(
-                    db,
-                    "reports"
-                ),
-
-                (snapshot) => {
-
-                    const fetchedReports = [];
-
-                    snapshot.forEach((doc) => {
-
-                        fetchedReports.push({
-
-                            id: doc.id,
-
-                            ...doc.data(),
-
-                        });
-
-                    });
-                    
-                    // Sort by newest first
-                    fetchedReports.sort((a, b) => {
-                        const timeA = a.createdAt?.seconds || 0;
-                        const timeB = b.createdAt?.seconds || 0;
-                        return timeB - timeA;
-                    });
-
-                    setReports(
-                        fetchedReports
-                    );
-
-                },
-
-                (error) => {
-                    console.error("Firestore snapshot error:", error);
-                    toast.error("Database connection blocked. Please disable your Ad-Blocker or Brave Shield for this site to load the live disaster reports!", {
-                        duration: 10000,
-                        position: "top-center"
-                    });
-                }
-
-            );
-
-        return () => unsubscribe();
-
-    }, []);
-
-
-    return (
-
-        <div className="p-6">
-
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <h1 className="text-5xl font-bold">
-                    Live Disaster Map
-                </h1>
-                
-                {/* Danger Zone Toggle */}
-                <button
-                    onClick={() => setShowDangerZones(!showDangerZones)}
-                    className={`flex items-center gap-3 px-6 py-3 rounded-xl font-bold transition-all border ${
-                        showDangerZones 
-                            ? "bg-red-500/20 text-red-400 border-red-500/50 shadow-lg shadow-red-900/30" 
-                            : "bg-slate-800 text-gray-400 border-white/5 hover:bg-slate-700"
-                    }`}
-                >
-                    <div className={`w-3 h-3 rounded-full ${showDangerZones ? "bg-red-500 animate-pulse" : "bg-gray-500"}`}></div>
-                    {showDangerZones ? "Danger Zones ON" : "Show Danger Zones"}
-                </button>
-            </div>
-
-            {/* Empty State */}
-            {reports.length === 0 && (
-
-                <div className="bg-slate-800 p-5 rounded-2xl text-center mb-6 text-gray-300">
-
-                    No active incidents found right now.
-
-                </div>
-
-            )}
-
-            {/* MAP ALWAYS SHOWS */}
-            <div className="h-[75vh] rounded-2xl overflow-hidden shadow-lg">
-
-                <MapContainer
-
-                    center={mapCenter}
-
-                    zoom={5}
-
-                    minZoom={3}
-
-                    maxZoom={18}
-
-                    maxBounds={[
-                        [-90, -180],
-                        [90, 180]
-                    ]}
-
-                    maxBoundsViscosity={1.0}
-
-                    className="h-full w-full"
-                >
-
-                    {/* FLOATING MAP LEGEND */}
-                    {showDangerZones && (
-                        <div className="absolute bottom-6 left-6 z-[1000] glass-panel p-4 rounded-xl border border-white/10 shadow-2xl animate-fade-in-up pointer-events-none">
-                            <h3 className="font-bold text-lg mb-2 text-white drop-shadow-md">Hazard Zones</h3>
-                            <div className="space-y-2 text-sm font-semibold">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full bg-red-500 opacity-60"></div>
-                                    <span className="text-red-200">1 KM (Critical)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full bg-orange-500 opacity-50"></div>
-                                    <span className="text-orange-200">500m (High)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full bg-yellow-500 opacity-40"></div>
-                                    <span className="text-yellow-200">250m (Medium)</span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <TileLayer
-
-                        attribution='&copy; OpenStreetMap contributors'
-
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-
-                        noWrap={true}
-
-                    />
-                    
-                    {userLocation && (
-                        <>
-                            <MapUpdater center={userLocation} />
-                            <LocateControl location={userLocation} />
-                        </>
-                    )}
-
-                    {userLocation && (
-                        <Marker 
-                            position={userLocation} 
-                            icon={userLocationIcon}
-                            zIndexOffset={1000}
-                        >
-                            <Popup>You are here</Popup>
-                        </Marker>
-                    )}
-
-                    {/* DANGER ZONES OVERLAY */}
-                    {showDangerZones && reports
-                        .filter(report => report.status !== "RESOLVED")
-                        .map(report => (
-                            <Circle
-                                key={`zone-${report.id}`}
-                                center={[report.latitude || 18.5204, report.longitude || 73.8567]}
-                                pathOptions={getZoneOptions(report.severity)}
-                                radius={getZoneOptions(report.severity).radius}
-                            >
-                                <Popup>
-                                    <div className="font-bold text-center text-slate-800">
-                                        <div className="text-red-600 uppercase">Avoid Area</div>
-                                        <div className="text-xs text-gray-600 mt-1">{report.type} Hazard</div>
-                                        <div className="text-xs font-normal mt-1">Radius: {getZoneOptions(report.severity).radius}m</div>
-                                    </div>
-                                </Popup>
-                            </Circle>
-                        ))
-                    }
-
-                    <MarkerClusterGroup
-                        chunkedLoading
-                        maxClusterRadius={50}
-                    >
-                        {/* INCIDENT MARKERS */}
-                        {reports
-                            .filter((report) => {
-                                // RESOLVED incidents are NEVER shown on the map (for anyone)
-                                if (report.status === "RESOLVED") return false;
-                                
-                                // Admin sees all non-resolved incidents regardless of distance
-                                if (isAdmin) return true;
-                                
-                                // If we have user location, filter by 3 KM radius (3000 meters)
-                                if (userLocation && report.latitude && report.longitude) {
-                                    const distance = L.latLng(userLocation[0], userLocation[1])
-                                                     .distanceTo(L.latLng(report.latitude, report.longitude));
-                                    return distance <= 3000;
-                                }
-                                
-                                // If GPS is not available yet, default to showing the incident
-                                return true;
-                            })
-                            .map((report) => (
-
-                            <Marker
-
-                                key={report.id}
-
-                                position={[
-
-                                    report.latitude || 18.5204,
-
-                                    report.longitude || 73.8567,
-
-                                ]}
-
-                            >
-
-                                <Popup>
-
-                                    <MapPopup
-
-                                        report={report}
-
-                                        verifyIncident={
-                                            verifyIncident
-                                        }
-
-                                    />
-
-                                </Popup>
-
-                            </Marker>
-
-                        ))}
-                    </MarkerClusterGroup>
-
-                </MapContainer>
-
-            </div>
-
-        </div>
-
-    );
-
+import { useCivilianSession } from "../context/CivilianSessionContext";
+
+const ZONES = {
+  CRITICAL: { color: "#c92f35", radius: 1000, fillOpacity: 0.2 },
+  HIGH: { color: "#e47730", radius: 500, fillOpacity: 0.16 },
+  MEDIUM: { color: "#d7a038", radius: 250, fillOpacity: 0.13 },
+  LOW: { color: "#408875", radius: 250, fillOpacity: 0.13 },
+  UNASSESSED: { color: "#64748b", radius: 250, fillOpacity: 0.1 },
+};
+const ACTIVE = new Set(["PENDING", "VERIFIED", "VERIFIED & LIVE", "NOT SURE",
+  "DEPLOYED", "IN_PROGRESS", "NEEDS_REVIEW"]);
+const markerIcons = Object.fromEntries(Object.entries(ZONES).map(([severity, config]) => [
+  severity,
+  L.divIcon({
+    className: "incident-map-pin",
+    html: '<div class="map-pin-dot" style="background:' + config.color + '"></div>',
+    iconSize: [26, 26], iconAnchor: [13, 13],
+  }),
+]));
+
+function MapFocus({ point }) {
+  const map = useMap();
+  useEffect(() => {
+    if (point) map.flyTo(point, 13, { duration: 0.8 });
+  }, [point, map]);
+  return null;
 }
 
-export default LiveMap;
+function validPosition(report) {
+  const lat = Number(report.latitude);
+  const lon = Number(report.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lon) &&
+    lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 &&
+    report.latitude !== null && report.latitude !== undefined &&
+    report.longitude !== null && report.longitude !== undefined;
+}
+
+export default function LiveMap({ isAdmin = false }) {
+  const { userLocation, requestLocation } = useLocation();
+  const { loginWithRedirect } = useAuth0();
+  const session = useCivilianSession();
+  const [reports, setReports] = useState([]);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [severity, setSeverity] = useState("ALL");
+  const [showZones, setShowZones] = useState(true);
+  const [focus, setFocus] = useState(null);
+
+  useEffect(() => onSnapshot(collection(db, "reports"), (snapshot) => {
+    const next = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    next.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    setReports(next);
+    setError("");
+  }, () => setError("Live incident data is temporarily unavailable. Please try again later.")), []);
+
+  const visible = useMemo(() => reports.filter((report) =>
+    validPosition(report) &&
+    ACTIVE.has(report.status || "PENDING") &&
+    (severity === "ALL" || (report.severity || "UNASSESSED") === severity) &&
+    [report.type, report.description, report.location].join(" ").toLowerCase()
+      .includes(query.toLowerCase().trim())
+  ), [reports, severity, query]);
+
+  async function vote(reportId, voteType) {
+    if (!session.ready && !isAdmin) {
+      toast("Sign in to verify an incident.");
+      loginWithRedirect({ appState: { returnTo: "/livemap" } });
+      return;
+    }
+    try {
+      await apiFetch("/verify-incident", {
+        method: "POST", body: { reportId, voteType },
+      });
+      toast.success("Your verification was recorded.");
+    } catch (issue) {
+      toast.error(issue.message || "Could not record verification.");
+    }
+  }
+
+  async function locateMe() {
+    try {
+      const point = await requestLocation();
+      setFocus(point);
+    } catch (issue) {
+      toast.error(issue.message || "Allow location access to center the map.");
+    }
+  }
+
+  return (
+    <main className={"live-map-page " + (isAdmin ? "admin-live-map" : "")}>
+      <div className="map-page-header content-width">
+        <div>
+          <p className="section-label">Community incident monitor</p>
+          <h1>Live incident map</h1>
+          <p>Explore active reports across locations. Reports are community-submitted and may be unverified.</p>
+        </div>
+        <span className="map-count"><span className="status-dot teal" /> {visible.length} active reports</span>
+      </div>
+      <div className="map-workspace content-width">
+        <aside className="map-sidebar">
+          <div className="map-filter-heading"><SlidersHorizontal size={18} /><strong>Explore incidents</strong></div>
+          <label className="map-search">
+            <Search size={18} />
+            <input placeholder="Search type or area" aria-label="Search incidents"
+              value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+          <label className="map-filter-label" htmlFor="map-severity">Severity</label>
+          <select id="map-severity" className="map-select" value={severity}
+            onChange={(event) => setSeverity(event.target.value)}>
+            {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW", "UNASSESSED"].map((value) => (
+              <option key={value} value={value}>{value === "ALL" ? "All severities" : value}</option>
+            ))}
+          </select>
+          <button type="button" className="map-toggle" onClick={() => setShowZones(!showZones)}
+            aria-pressed={showZones}>
+            <Layers3 size={18} /> Show severity zones
+            <span className={"toggle-switch " + (showZones ? "is-on" : "")} />
+          </button>
+          <div className="map-sidebar-heading">Active reports <span>{visible.length}</span></div>
+          <div className="map-report-list">
+            {visible.length ? visible.slice(0, 80).map((report) => (
+              <button key={report.id} className="map-report-card"
+                onClick={() => setFocus([Number(report.latitude), Number(report.longitude)])}>
+                <span className={"severity-marker severity-" + String(report.severity || "UNASSESSED").toLowerCase()} />
+                <span><strong>{report.type || "Incident"}</strong>
+                  <small>{report.location || "Location on map"}</small>
+                  <em>{report.status || "PENDING"} • {report.severity || "UNASSESSED"}</em>
+                </span>
+              </button>
+            )) : <p className="map-no-results">No reports match these filters.</p>}
+          </div>
+        </aside>
+        <section className="map-surface" aria-label="Incident map">
+          {error && <div className="map-error" role="alert"><ShieldAlert size={18} /> {error}</div>}
+          <MapContainer center={[20.5937, 78.9629]} zoom={5}
+            minZoom={3} maxZoom={18} scrollWheelZoom={true}
+            className="map-leaflet">
+            <TileLayer attribution='&copy; OpenStreetMap contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapFocus point={focus} />
+            {userLocation && (
+              <Marker position={userLocation}>
+                <Popup>Your last shared location</Popup>
+              </Marker>
+            )}
+            {showZones && visible.map((report) => {
+              const zone = ZONES[report.severity] || ZONES.UNASSESSED;
+              return <Circle key={"zone-" + report.id}
+                center={[Number(report.latitude), Number(report.longitude)]}
+                radius={zone.radius}
+                pathOptions={{
+                  color: zone.color, fillColor: zone.color,
+                  fillOpacity: zone.fillOpacity, weight: 1.5,
+                }} />;
+            })}
+            <MarkerClusterGroup chunkedLoading maxClusterRadius={55}>
+              {visible.map((report) => (
+                <Marker key={report.id}
+                  position={[Number(report.latitude), Number(report.longitude)]}
+                  icon={markerIcons[report.severity] || markerIcons.UNASSESSED}>
+                  <Popup maxWidth={315} minWidth={260}>
+                    <MapPopup report={report} verifyIncident={vote} />
+                  </Popup>
+                </Marker>
+              ))}
+            </MarkerClusterGroup>
+          </MapContainer>
+          <div className="map-controls">
+            <button type="button" className="map-locate-button" onClick={locateMe}>
+              <Crosshair size={18} /> My location
+            </button>
+            <div className="map-key">
+              <MapPinned size={17} />
+              <span><i className="key-dot key-red" /> Critical</span>
+              <span><i className="key-dot key-orange" /> High</span>
+              <span><i className="key-dot key-amber" /> Medium</span>
+            </div>
+          </div>
+          <p className="map-caution">Severity circles are illustrative, not official evacuation perimeters.
+            Nearby notification radius is 5 km.</p>
+        </section>
+      </div>
+    </main>
+  );
+}

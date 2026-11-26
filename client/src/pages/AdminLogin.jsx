@@ -1,173 +1,60 @@
-import {
-    useState,
-} from "react";
-
-import {
-    useNavigate,
-} from "react-router-dom";
-
-import toast
-    from "react-hot-toast";
-
-import {
-    API_BASE_URL,
-} from "../utils/constants";
-
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { LockKeyhole, ShieldCheck, ArrowRight } from "lucide-react";
 import { auth } from "../firebase";
-import { signInWithCustomToken } from "firebase/auth";
 
-function AdminLogin() {
+export default function AdminLogin() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
-    const navigate =
-        useNavigate();
+  async function login(event) {
+    event.preventDefault();
+    setPending(true);
+    setError("");
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const token = await credential.user.getIdTokenResult(true);
+      if (token.claims.role !== "admin") {
+        await signOut(auth);
+        throw new Error("This account has not been assigned administrator access.");
+      }
+      navigate("/admin", { replace: true });
+    } catch (issue) {
+      setError(issue.code === "auth/invalid-credential"
+        ? "Email or password is incorrect." : issue.message);
+    } finally {
+      setPending(false);
+    }
+  }
 
-    const [adminKey, setAdminKey] =
-        useState("");
-
-    const [showPassword, setShowPassword] = useState(false);
-
-    // Login
-    const handleLogin = async (e) => {
-        if (e) e.preventDefault();
-
-        try {
-
-            const response =
-
-                await fetch(
-
-                    `${API_BASE_URL}/admin-login`,
-
-                    {
-
-                        method: "POST",
-
-                        headers: {
-
-                            "Content-Type":
-                                "application/json",
-
-                        },
-
-                        body: JSON.stringify({
-
-                            password:
-                                adminKey,
-
-                        }),
-
-                    }
-
-                );
-
-            const data =
-                await response.json();
-
-            // Invalid
-            if (data.error) {
-
-                toast.error(
-                    data.error
-                );
-
-                return;
-
-            }
-
-            // Save admin session
-            sessionStorage.setItem(
-
-                "isAdmin",
-
-                "true"
-
-            );
-
-            // Sign in to Firebase with Custom Token for secure database access
-            if (data.firebaseToken) {
-                await signInWithCustomToken(auth, data.firebaseToken);
-            }
-
-            toast.success(
-                "Admin Login Successful"
-            );
-
-            navigate("/admin");
-
-        }
-
-        catch (error) {
-
-            console.error(error);
-
-            toast.error(
-                "Login failed"
-            );
-
-        }
-
-    };
-
-    return (
-
-        <div className="min-h-screen flex justify-center items-center bg-mesh text-white px-4">
-
-            <div className="glass-panel p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/10">
-
-                <h1 className="text-4xl font-extrabold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400">
-
-                    Admin Access
-
-                </h1>
-
-                <form onSubmit={handleLogin} className="space-y-6">
-                    <div className="relative">
-                        <input
-                            id="admin-key"
-                            name="admin-key"
-                            type={showPassword ? "text" : "password"}
-
-                            placeholder="Enter Admin Key"
-
-                            value={adminKey}
-
-                            onChange={(e) =>
-
-                                setAdminKey(
-                                    e.target.value
-                                )
-
-                            }
-
-                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-red-500 outline-none transition-all pr-12"
-
-                        />
-                        <button 
-                            type="button" 
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                        >
-                            {showPassword ? "🙈" : "👁️"}
-                        </button>
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="btn-premium w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 p-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/50"
-
-                    >
-
-                        Access Dashboard
-
-                    </button>
-                </form>
-
-            </div>
-
-        </div>
-
-    );
-
+  return (
+    <main className="portal-signin-page">
+      <div className="portal-signin-card">
+        <div className="portal-icon"><ShieldCheck size={25} /></div>
+        <p className="section-label">Secure access / administration</p>
+        <h1>Administrator sign in</h1>
+        <p>Use an individual Firebase account granted the administrator role by your project operator.</p>
+        <form onSubmit={login} className="portal-signin-form">
+          <label htmlFor="admin-email">Email address</label>
+          <input id="admin-email" autoComplete="username" type="email" required
+            value={email} onChange={event => setEmail(event.target.value)}
+            placeholder="operator@example.com" />
+          <label htmlFor="admin-password">Password</label>
+          <input id="admin-password" autoComplete="current-password" type="password" required
+            value={password} onChange={event => setPassword(event.target.value)}
+            placeholder="Your account password" />
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button disabled={pending} className="button button-primary" type="submit">
+            <LockKeyhole size={18} /> {pending ? "Verifying account…" : "Sign in securely"} <ArrowRight size={17} />
+          </button>
+        </form>
+        <p className="portal-signin-note">Role permissions are verified server-side. Shared admin keys have been retired.</p>
+        <Link to="/">Return to RescueNet <ArrowRight size={14} /></Link>
+      </div>
+    </main>
+  );
 }
-
-export default AdminLogin;

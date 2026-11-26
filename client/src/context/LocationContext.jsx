@@ -1,64 +1,72 @@
-import { createContext, useContext, useState, useEffect } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-const LocationContext = createContext();
+const LocationContext = createContext(null);
 
-export const LocationProvider = ({ children }) => {
-    const [userLocation, setUserLocation] = useState(null);
-    const [error, setError] = useState(null);
-    const [isTracking, setIsTracking] = useState(false);
+export function LocationProvider({ children }) {
+  const [userLocation, setUserLocation] = useState(null);
+  const [error, setError] = useState(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const watchRef = useRef(null);
 
-    useEffect(() => {
-        if (!navigator.geolocation) {
-            const errMsg = "Geolocation is not supported by your browser";
-            setError(errMsg);
-            console.error(errMsg);
-            return;
-        }
-
-        setIsTracking(true);
-        console.log("Starting geolocation tracking...");
-
-        // Using watchPosition for continuous tracking without repeated popups
-        const watchId = navigator.geolocation.watchPosition(
-            (position) => {
-                const newLocation = [
-                    position.coords.latitude,
-                    position.coords.longitude,
-                ];
-                console.log("Location updated:", newLocation);
-                setUserLocation(newLocation);
-                setError(null);
-            },
-            (err) => {
-                const errorMsg = `Geolocation error: ${err.message}`;
-                setError(errorMsg);
-                console.warn("Location error:", err);
-            },
-            {
-                enableHighAccuracy: false, // Set to false for faster initial location
-                timeout: 30000, // Increased timeout for reliability
-                maximumAge: 5000, // Cache location for 5 seconds
-            }
-        );
-
-        return () => {
-            navigator.geolocation.clearWatch(watchId);
-            setIsTracking(false);
-            console.log("Stopped geolocation tracking");
-        };
-    }, []);
-
-    return (
-        <LocationContext.Provider value={{ userLocation, error, isTracking }}>
-            {children}
-        </LocationContext.Provider>
-    );
-};
-
-export const useLocation = () => {
-    const context = useContext(LocationContext);
-    if (!context) {
-        throw new Error("useLocation must be used within a LocationProvider");
+  const requestLocation = useCallback(({ watch = false } = {}) => new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      const failure = new Error("Location is not supported by this browser.");
+      setError(failure.message);
+      reject(failure);
+      return;
     }
-    return context;
-};
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coordinates = [position.coords.latitude, position.coords.longitude];
+        setUserLocation(coordinates);
+        setError(null);
+        if (watch && watchRef.current === null) {
+          watchRef.current = navigator.geolocation.watchPosition(
+            (next) => setUserLocation([
+              next.coords.latitude, next.coords.longitude,
+            ]),
+            (issue) => setError(issue.message),
+            { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
+          );
+          setIsTracking(true);
+        }
+        resolve(coordinates);
+      },
+      (issue) => {
+        setError(issue.message);
+        reject(issue);
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 }
+    );
+  }), []);
+
+  const stopTracking = useCallback(() => {
+    if (watchRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchRef.current);
+      watchRef.current = null;
+    }
+    setIsTracking(false);
+    setUserLocation(null);
+  }, []);
+
+  useEffect(() => () => {
+    if (watchRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchRef.current);
+    }
+  }, []);
+
+  return (
+    <LocationContext.Provider value={{
+      userLocation, error, isTracking, requestLocation, stopTracking,
+    }}>
+      {children}
+    </LocationContext.Provider>
+  );
+}
+
+export function useLocation() {
+  const value = useContext(LocationContext);
+  if (!value) throw new Error("useLocation requires LocationProvider.");
+  return value;
+}

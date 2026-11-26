@@ -1,497 +1,247 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-    useEffect,
-    useState,
-    useRef,
-} from "react";
-
-import { db } from "../firebase";
-
-import {
-    collection,
-    addDoc,
-} from "firebase/firestore";
-
-import {
-    classifyEmergency,
-} from "../utils/ai";
-
-import {
-    API_BASE_URL,
-} from "../utils/constants";
-
+  ArrowRight, Camera, CheckCircle2, Crosshair, FileImage,
+  Info, LoaderCircle, MapPin, ShieldAlert, Trash2, UploadCloud,
+} from "lucide-react";
+import { apiFetch } from "../services/api";
 import { useLocation } from "../context/LocationContext";
 
-function Report() {
-
-    const { userLocation } = useLocation();
-
-    const [formData, setFormData] =
-        useState({
-
-            type: "",
-            description: "",
-            location: "Detecting location...",
-            latitude: null,
-            longitude: null,
-            media: [],
-
-        });
-
-    const [loading, setLoading] =
-        useState(false);
-
-    const fileInputRef = useRef(null);
-    const cameraInputRef = useRef(null);
-
-    // Update coordinates when context changes (Global Watcher)
-    useEffect(() => {
-        if (userLocation) {
-            const [lat, lon] = userLocation;
-            
-            // Update coords immediately
-            setFormData(prev => ({
-                ...prev,
-                latitude: lat,
-                longitude: lon
-            }));
-
-            // Fetch human readable address (Debounced/Cached behavior)
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-                .then(res => res.json())
-                .then(data => {
-                    const address = data.address || {};
-                    const areaName = address.suburb || address.neighbourhood || address.city || address.town || address.village || address.state_district || "Current Location";
-                    setFormData(prev => ({ ...prev, location: areaName }));
-                })
-                .catch(err => console.error("Reverse geocoding failed:", err));
-        }
-    }, [userLocation]);
-
-    // Handle input changes
-    const handleChange = (e) => {
-
-        const { name, value } =
-            e.target;
-
-        setFormData((prev) => ({
-
-            ...prev,
-            [name]:
-                value,
-
-        }));
-
-    };
-
-    // Handle media selection
-    const handleMediaChange = (e) => {
-
-        const files =
-            Array.from(e.target.files);
-
-        setFormData((prev) => ({
-
-            ...prev,
-            media: [
-                ...prev.media,
-                ...files
-            ],
-
-        }));
-
-    };
-
-    // Remove media
-    const removeMedia = (index) => {
-
-        setFormData((prev) => ({
-
-            ...prev,
-
-            media:
-                prev.media.filter(
-                    (_, i) =>
-                        i !== index
-                ),
-
-        }));
-
-    };
-
-    // Submit Report
-    const handleSubmit = async (e) => {
-
-        if (e) e.preventDefault();
-
-        if (!formData.type || !formData.description) {
-
-            alert(
-                "Please fill in all fields"
-            );
-
-            return;
-
-        }
-
-        setLoading(true);
-
-        try {
-
-            // Step 1: Upload media to Cloudinary
-            const mediaUrls = [];
-
-            for (const file of formData.media) {
-
-                const data =
-                    new FormData();
-
-                data.append(
-                    "file",
-                    file
-                );
-
-                data.append(
-                    "upload_preset",
-                    import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
-                );
-
-                const res =
-                    await fetch(
-                        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/auto/upload`,
-
-                        {
-                            method: "POST",
-                            body: data,
-                        }
-
-                    );
-
-                const fileData =
-                    await res.json();
-
-                mediaUrls.push({
-
-                    url:
-                        fileData.secure_url,
-
-                    type:
-                        fileData.resource_type,
-
-                });
-
-            }
-
-            // Step 2: Use AI to refine severity
-            const aiAnalysis =
-                await classifyEmergency(
-                    formData.description,
-                    mediaUrls.map((media) => media.url)
-                );
-
-            const finalSeverity =
-                aiAnalysis.error || aiAnalysis.severity === "PENDING"
-                    ? "LOW"
-                    : aiAnalysis.severity || "LOW";
-
-            // Step 3: Save to Firestore and get the document reference
-            const docRef = await addDoc(
-
-                collection(
-                    db,
-                    "reports"
-                ),
-
-                {
-
-                    type:
-                        formData.type,
-
-                    description:
-                        formData.description,
-
-                    location:
-                        formData.location,
-
-                    severity:
-                        finalSeverity,
-
-                    mediaUrls:
-                        mediaUrls,
-
-                    latitude:
-                        formData.latitude,
-
-                    longitude:
-                        formData.longitude,
-
-                    verifiedYes: 0,
-                    verifiedNo: 0,
-                    verifiedUnsure: 0,
-
-                    status: "PENDING",
-
-                    createdAt:
-                        new Date(),
-
-                }
-
-            );
-
-            // Step 4: Distribute incident to nearby responders
-            try {
-                await fetch(`${API_BASE_URL}/distribute-incident`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        reportId: docRef.id,
-                        latitude: formData.latitude,
-                        longitude: formData.longitude,
-                        type: formData.type,
-                        severity: finalSeverity,
-                    })
-                });
-            } catch (distributionError) {
-                console.error("Incident distribution failed:", distributionError);
-            }
-
-            // Trigger Twilio SMS for CRITICAL emergencies (admin)
-            if (finalSeverity === "CRITICAL") {
-                try {
-                    await fetch(`${API_BASE_URL}/send-emergency-sms`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            location: formData.location,
-                            type: formData.type,
-                            description: formData.description
-                        })
-                    });
-                } catch (smsError) {
-                    console.error("SMS trigger failed", smsError);
-                }
-            }
-
-            // Trigger SMS alerts to nearby registered users (all severities)
-            try {
-                await fetch(`${API_BASE_URL}/send-nearby-alerts`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        latitude: formData.latitude,
-                        longitude: formData.longitude,
-                        type: formData.type,
-                        location: formData.location,
-                        severity: finalSeverity,
-                    })
-                });
-            } catch (nearbyErr) {
-                console.error("Nearby alerts failed:", nearbyErr);
-            }
-
-            alert(
-                "Incident Report Submitted Successfully!"
-            );
-
-            // Reset form
-            setFormData((prev) => ({
-
-                type: "",
-                description: "",
-                media: [],
-
-                location:
-                    prev.location,
-
-                latitude:
-                    prev.latitude,
-
-                longitude:
-                    prev.longitude,
-
-            }));
-
-        }
-
-        catch (error) {
-
-            console.error(error);
-
-            alert(
-                "Failed to submit report"
-            );
-
-        }
-
-        finally {
-
-            setLoading(false);
-
-        }
-
-    };
-
-    return (
-
-        <div className="min-h-screen bg-slate-950 text-white pb-20 pt-10 px-4">
-
-            <div className="max-w-2xl mx-auto glass-panel p-8 rounded-3xl border border-white/10 shadow-2xl animate-fade-in-up">
-
-                <div className="text-center mb-10">
-                    <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-orange-400 mb-2">
-                        Report Emergency
-                    </h1>
-                    <p className="text-slate-400 font-medium">Your report will be analyzed by AI and sent to nearby responders.</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-8">
-
-                    {/* LOCATION PREVIEW */}
-                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center gap-4 group hover:border-blue-500/30 transition-colors">
-                        <div className="bg-blue-500/20 p-3 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Incident Location</label>
-                            <p className="text-blue-200 font-semibold truncate max-w-[400px]">
-                                {formData.location}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                            <label htmlFor="type" className="text-sm font-bold text-slate-400 ml-1">Emergency Type</label>
-                            <select
-                                id="type"
-                                name="type"
-                                value={formData.type}
-                                onChange={handleChange}
-                                className="w-full p-4 rounded-xl bg-slate-900 border border-white/10 focus:ring-2 focus:ring-red-500 outline-none transition-all appearance-none cursor-pointer"
-                            >
-                                <option value="">Select Type</option>
-                                <option value="Fire">Fire</option>
-                                <option value="Accident">Accident</option>
-                                <option value="Medical">Medical</option>
-                                <option value="Flood">Flood</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold text-slate-400 ml-1">Media Evidence</label>
-                            <div className="flex gap-2">
-                                {/* Native Gallery Upload */}
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current.click()}
-                                    className="flex-1 bg-slate-900 border border-white/10 p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors group"
-                                >
-                                    <span className="text-xl group-hover:scale-125 transition-transform">📁</span>
-                                    <span className="font-bold text-xs uppercase tracking-tight">Gallery</span>
-                                </button>
-                                
-                                {/* Native Camera Trigger */}
-                                <button
-                                    type="button"
-                                    onClick={() => cameraInputRef.current.click()}
-                                    className="flex-1 bg-blue-600/20 border border-blue-500/30 p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600/30 transition-colors group"
-                                >
-                                    <span className="text-xl group-hover:scale-125 transition-transform">📷</span>
-                                    <span className="font-bold text-xs uppercase tracking-tight text-blue-200">Live Camera</span>
-                                </button>
-                            </div>
-
-                            <input
-                                id="gallery-upload"
-                                name="gallery-upload"
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleMediaChange}
-                                multiple
-                                accept="image/*,video/*"
-                                className="hidden"
-                            />
-                            
-                            <input
-                                id="camera-upload"
-                                name="camera-upload"
-                                type="file"
-                                ref={cameraInputRef}
-                                onChange={handleMediaChange}
-                                capture="environment"
-                                accept="image/*,video/*"
-                                className="hidden"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <label htmlFor="description" className="text-sm font-bold text-slate-400 ml-1">Incident Description</label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            value={formData.description}
-                            onChange={handleChange}
-                            rows="4"
-                            placeholder="Describe the situation... (AI will detect severity based on your words)"
-                            className="w-full p-4 rounded-2xl bg-slate-900 border border-white/10 focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
-                        ></textarea>
-                    </div>
-
-                    {/* MEDIA PREVIEW */}
-                    {formData.media.length > 0 && (
-                        <div className="flex flex-wrap gap-4 p-4 bg-slate-900/30 rounded-2xl border border-white/5">
-                            {formData.media.map((file, i) => (
-                                <div key={i} className="relative group">
-                                    <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-blue-500/50">
-                                        <img
-                                            src={URL.createObjectURL(file)}
-                                            alt="Preview"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => removeMedia(i)}
-                                        className="absolute -top-2 -right-2 bg-red-600 rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/20 hover:scale-110 transition-transform"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full p-5 rounded-2xl font-black text-xl tracking-widest uppercase transition-all shadow-2xl ${
-                            loading 
-                                ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
-                                : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 hover:scale-[1.02] active:scale-95 shadow-red-900/30"
-                        }`}
-                    >
-                        {loading ? (
-                            <span className="flex items-center justify-center gap-3">
-                                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                                AI ANALYZING...
-                            </span>
-                        ) : (
-                            "Submit Report"
-                        )}
-                    </button>
-
-                </form>
-
-            </div>
-
-        </div>
-
-    );
-
+const INCIDENT_TYPES = ["Accident", "Medical", "Fire", "Flood", "Crime", "Other"];
+const MAX_FILES = 5;
+const IMAGE_MAX = 8 * 1024 * 1024;
+const VIDEO_MAX = 35 * 1024 * 1024;
+
+function MediaPreview({ file, remove }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => {
+    return () => URL.revokeObjectURL(url);
+  }, [url]);
+  return (
+    <div className="media-preview">
+      {file.type.startsWith("video/") ?
+        <video src={url || undefined} muted playsInline aria-label={"Selected video " + file.name} /> :
+        <img src={url || undefined} alt={"Selected file " + file.name} />}
+      <button type="button" className="media-remove" aria-label={"Remove " + file.name} onClick={remove}>
+        <Trash2 size={15} />
+      </button>
+      <small>{file.name}</small>
+    </div>
+  );
 }
 
-export default Report;
+async function uploadMedia(file) {
+  const cloud = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  if (!cloud || !preset) throw new Error("Media upload is not configured on this site.");
+  const body = new FormData();
+  body.append("file", file);
+  body.append("upload_preset", preset);
+  const response = await fetch("https://api.cloudinary.com/v1_1/" + cloud + "/auto/upload", {
+    method: "POST", body,
+  });
+  const result = await response.json();
+  if (!response.ok || !result.secure_url ||
+      !["image", "video"].includes(result.resource_type)) {
+    throw new Error(result.error?.message || "A media file could not be uploaded.");
+  }
+  return { url: result.secure_url, type: result.resource_type };
+}
+
+export default function Report() {
+  const { userLocation, requestLocation } = useLocation();
+  const fileRef = useRef(null);
+  const cameraRef = useRef(null);
+  const [type, setType] = useState("");
+  const [description, setDescription] = useState("");
+  const [area, setArea] = useState("");
+  const [media, setMedia] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState("");
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  async function locate() {
+    setError("");
+    try {
+      const [lat, lon] = await requestLocation();
+      setArea(lat.toFixed(5) + ", " + lon.toFixed(5));
+      try {
+        const response = await fetch(
+          "https://nominatim.openstreetmap.org/reverse?format=json&lat=" +
+          lat + "&lon=" + lon,
+          { signal: AbortSignal.timeout(7000) }
+        );
+        const data = await response.json();
+        const address = data.address || {};
+        setArea(address.suburb || address.neighbourhood || address.city ||
+          address.town || address.village || address.county || "GPS location");
+      } catch { /* coordinates remain valid even if reverse geocoding fails */ }
+    } catch (issue) {
+      setError(issue?.message || "Could not access your location. Check browser permissions.");
+    }
+  }
+
+  function addFiles(list) {
+    const incoming = Array.from(list || []);
+    const accepted = incoming.filter((file) =>
+      (file.type.startsWith("image/") && file.size <= IMAGE_MAX) ||
+      (file.type.startsWith("video/") && file.size <= VIDEO_MAX)
+    );
+    if (accepted.length !== incoming.length) {
+      setError("Images must be under 8 MB and videos under 35 MB.");
+    }
+    setMedia((current) => [...current, ...accepted].slice(0, MAX_FILES));
+    if (media.length + accepted.length > MAX_FILES) {
+      setError("A report can include up to five photos or videos.");
+    }
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    setError("");
+    setResult(null);
+    if (!userLocation) {
+      setError("Use the location button to add the incident's GPS position.");
+      return;
+    }
+    if (description.trim().length < 10) {
+      setError("Describe what happened in at least 10 characters.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const mediaUrls = [];
+      for (let index = 0; index < media.length; index++) {
+        setStep("Uploading evidence " + (index + 1) + " of " + media.length + "…");
+        mediaUrls.push(await uploadMedia(media[index]));
+      }
+      setStep("Saving incident and running analysis…");
+      const response = await apiFetch("/reports", {
+        method: "POST",
+        body: {
+          type, description, location: area || "GPS location",
+          latitude: userLocation[0],
+          longitude: userLocation[1],
+          mediaUrls,
+        },
+      });
+      setResult(response);
+      setDescription("");
+      setType("");
+      setMedia([]);
+      setStep("");
+    } catch (issue) {
+      setError(issue.message || "Report could not be saved. Please retry.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="form-page content-width">
+      <div className="page-heading">
+        <p className="section-label">Community reporting</p>
+        <h1>Report an incident</h1>
+        <p>Share what you can see. Accurate reports help people nearby understand the situation.</p>
+      </div>
+      <div className="form-layout">
+        <form className="form-panel" onSubmit={submit}>
+          <div className="panel-title">
+            <span className="panel-icon"><FileImage size={22} /></span>
+            <div><h2>Incident details</h2><p>Provide clear, factual information.</p></div>
+          </div>
+          <div className="field-group">
+            <label htmlFor="incident-type">What happened?</label>
+            <select id="incident-type" className="field-input" required value={type}
+              onChange={(event) => setType(event.target.value)}>
+              <option value="">Choose incident type</option>
+              {INCIDENT_TYPES.map((item) => <option value={item} key={item}>{item}</option>)}
+            </select>
+          </div>
+          <div className="field-group">
+            <label htmlFor="incident-description">Describe the situation</label>
+            <textarea id="incident-description" className="field-input" required minLength={10}
+              maxLength={2000} rows={5} value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="What happened? Is anyone injured? Are there immediate dangers?" />
+            <small>{description.length} / 2000 characters</small>
+          </div>
+          <div className="field-group">
+            <label>Incident location</label>
+            <div className="location-field">
+              <MapPin size={20} />
+              <span>{userLocation ? area || "GPS position acquired" : "Location not shared yet"}</span>
+              <button type="button" className="button button-outline" onClick={locate}>
+                <Crosshair size={17} /> {userLocation ? "Refresh" : "Use GPS"}
+              </button>
+            </div>
+            <small>Location is required for nearby warnings. Confirm that you are at the incident.</small>
+          </div>
+          <div className="field-group">
+            <label>Evidence <span className="optional-label">(optional)</span></label>
+            <div className="media-actions">
+              <button className="upload-option" type="button" onClick={() => fileRef.current?.click()}>
+                <UploadCloud size={21} /> Add photos or videos
+              </button>
+              <button className="upload-option" type="button" onClick={() => cameraRef.current?.click()}>
+                <Camera size={21} /> Use camera
+              </button>
+            </div>
+            <input ref={fileRef} type="file" multiple accept="image/*,video/*"
+              className="sr-only" onChange={(event) => {
+                addFiles(event.target.files);
+                event.target.value = "";
+              }} />
+            <input ref={cameraRef} type="file" accept="image/*,video/*" capture="environment"
+              className="sr-only" onChange={(event) => {
+                addFiles(event.target.files);
+                event.target.value = "";
+              }} />
+            <small>Up to 5 files • 8 MB per image • 35 MB per video</small>
+            {!!media.length && <div className="media-grid">
+              {media.map((file, index) => <MediaPreview key={file.name + index}
+                file={file} remove={() => setMedia((current) =>
+                  current.filter((_, i) => i !== index))} />)}
+            </div>}
+          </div>
+          {error && <div className="form-error" role="alert"><ShieldAlert size={19} /> {error}</div>}
+          {result && (
+            <div className="form-success" role="status">
+              <CheckCircle2 size={23} />
+              <div>
+                <strong>Incident saved</strong>
+                <p>Severity: {result.triage?.severity || "UNASSESSED"}.
+                  Facilities shown are suggestions; no service has been contacted.</p>
+                <Link to="/livemap">See it on the map <ArrowRight size={14} /></Link>
+              </div>
+            </div>
+          )}
+          <button className="button button-primary form-submit" type="submit" disabled={busy}>
+            {busy ? <><LoaderCircle className="animate-spin" size={19} /> {step || "Saving…"}</> :
+              <>Save incident report <ArrowRight size={19} /></>}
+          </button>
+        </form>
+        <aside className="form-aside">
+          <div className="aside-card">
+            <Info size={23} />
+            <h2>Before you report</h2>
+            <p>Only report incidents you witnessed or can reliably describe.
+              Avoid sharing identifiable photos of victims or private details.</p>
+            <ul>
+              <li>Use an accurate location.</li>
+              <li>Include relevant evidence when safe.</li>
+              <li>Don't put yourself at risk to capture footage.</li>
+            </ul>
+          </div>
+          <div className="aside-emergency">
+            <ShieldAlert size={23} />
+            <h3>Is someone in immediate danger?</h3>
+            <p>Contact official emergency services directly. RescueNet is not an emergency hotline.</p>
+            <Link to="/sos">Open demonstration SOS <ArrowRight size={15} /></Link>
+          </div>
+        </aside>
+      </div>
+    </main>
+  );
+}

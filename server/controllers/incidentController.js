@@ -1,225 +1,144 @@
-const db = require(
-    "../config/firebase"
-);
+const db = require("../config/firebase");
+const { analyzeIncident } = require("../services/triage");
+const { findNearbyStations } = require("../services/stationLookup");
+const { departmentsForIncident } = require("../utils/departments");
+const { isValidCoordinates, cleanText } = require("../utils/validation");
+const { geoHash, geoQuery, queueIncidentNotifications, processNotificationJobs } =
+  require("../services/notifications");
 
-const calculateDistance = require(
-    "../utils/distanceCalculator"
-);
+function parseMediaUrls(raw) {
+  if (!Array.isArray(raw) || raw.length > 5) return null;
+  const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+  const media = [];
+  for (const item of raw) {
+    if (!item || typeof item.url !== "string" ||
+        !["image", "video"].includes(item.type)) return null;
+    let url;
+    try { url = new URL(item.url); } catch { return null; }
+    if (!cloud || url.protocol !== "https:" ||
+        url.hostname !== "res.cloudinary.com" ||
+        !url.pathname.startsWith("/" + cloud + "/" + item.type + "/upload/")) {
+      return null;
+    }
+    media.push({ url: url.toString(), type: item.type });
+  }
+  return media;
+}
 
-const getNearbyIncidents = async (
-    req,
-    res
-) => {
-
-    try {
-
-        const {
-            latitude,
-            longitude,
-        } = req.body;
-
-        const reportsSnapshot =
-            await db
-                .collection("reports")
-                .get();
-
-        const nearbyReports = [];
-
-        const now = Date.now();
-        const THIRTY_MINS = 30 * 60 * 1000;
-
-        for (const doc of reportsSnapshot.docs) {
-
-            const report = doc.data();
-            const reportId = doc.id;
-
-            // Skip resolved
-            if (
-                report.status ===
-                "RESOLVED"
-            ) {
-                continue;
-            }
-
-            // AUTO-RESOLUTION LOGIC
-            const createdAt = report.createdAt?.toDate() || new Date(0);
-            const updatedAt = report.updatedAt?.toDate() || createdAt;
-            
-            const timeSinceCreated = now - createdAt.getTime();
-            const timeSinceUpdated = now - updatedAt.getTime();
-
-            const isStale = timeSinceCreated > THIRTY_MINS && timeSinceUpdated > THIRTY_MINS;
-            const hasTooManyNos = report.verifiedNo > (report.verifiedYes + 5); // 5 more No's than Yes's
-
-            if (isStale || hasTooManyNos) {
-                // Auto-resolve in database
-                await db.collection("reports").doc(reportId).update({
-                    status: "RESOLVED",
-                    autoResolved: true,
-                    resolvedAt: new Date()
-                });
-                continue; // Skip from nearby results
-            }
-
-            // Ensure coords exist
-            if (
-                !report.latitude ||
-                !report.longitude
-            ) {
-                continue;
-            }
-
-            // Distance calculation
-            const distance =
-                calculateDistance(
-
-                    latitude,
-                    longitude,
-
-                    report.latitude,
-                    report.longitude
-
-                );
-
-            // Within 3 KM
-            if (distance <= 3) {
-
-                nearbyReports.push({
-
-                    id: reportId,
-                    ...report,
-                    distance:
-                        distance.toFixed(2),
-
-                });
-
-            }
-
-        }
-
-        res.json({
-
-            incidents:
-                nearbyReports,
-
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-
-            error:
-                "Failed to fetch nearby incidents",
-
-        });
-
+async function createReport(req, res) {
+  try {
+    const type = cleanText(req.body.type, 80);
+    const description = cleanText(req.body.description, 2000);
+    const location = cleanText(req.body.location, 150) || "Location provided on map";
+    const { latitude, longitude } = req.body;
+    const mediaUrls = parseMediaUrls(req.body.mediaUrls || []);
+    if (!type || description.length < 10 || !isValidCoordinates(latitude, longitude) ||
+        mediaUrls === null) {
+      return res.status(400).json({
+        error: "Provide an incident type, a description (10+ characters), valid GPS coordinates, and valid media.",
+      });
     }
 
-};
-
-// Distribute incident to nearby responders
-const distributeIncidentToResponders = async (
-    req,
-    res
-) => {
+    const triage = await analyzeIncident({ type, description, mediaUrls });
+    const departments = departmentsForIncident(type, triage.department);
+    let lookup = { stations: [], source: "unavailable" };
     try {
-        const {
-            reportId,
-            latitude,
-            longitude,
-            type,
-            severity,
-        } = req.body;
-
-        if (!reportId || !latitude || !longitude) {
-            return res.status(400).json({
-                error: "Missing required fields: reportId, latitude, longitude",
-            });
-        }
-
-        // Find all responder stations data
-        const stationsData = require("../data/stations");
-        const nearbyStations = [];
-
-        // Calculate distances to stations
-        for (const station of stationsData) {
-            const distance = calculateDistance(
-                latitude,
-                longitude,
-                station.latitude,
-                station.longitude
-            );
-
-            // Within 20 KM radius
-            if (distance <= 20) {
-                nearbyStations.push({
-                    ...station,
-                    distance: distance.toFixed(2),
-                });
-            }
-        }
-
-        // Fallback: if still none found in 20 km, pick the nearest station of each type
-        if (nearbyStations.length === 0) {
-            const typesNeeded = ["Police", "Ambulance", "Fire Brigade"];
-            for (const t of typesNeeded) {
-                const ofType = stationsData
-                    .map(s => ({ ...s, distance: calculateDistance(latitude, longitude, s.latitude, s.longitude).toFixed(2) }))
-                    .filter(s => s.type === t)
-                    .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-                if (ofType.length > 0) nearbyStations.push(ofType[0]);
-            }
-        }
-
-        // Determine responder types based on incident type
-        let responderTypes = ["ambulance"];
-        if (type && type.toLowerCase().includes("fire")) {
-            responderTypes.push("fire");
-        }
-        if (type && (type.toLowerCase().includes("crime") || type.toLowerCase().includes("accident"))) {
-            responderTypes.push("police");
-        }
-
-        // Create distribution records for each responder type
-        for (const responderType of responderTypes) {
-            const filteredStations = nearbyStations.filter(
-                s => s.type === responderType
-            );
-
-            if (filteredStations.length > 0) {
-                // Create a distribution record in a new collection
-                await db.collection("incident_distributions").add({
-                    reportId,
-                    responderType,
-                    stations: filteredStations,
-                    latitude,
-                    longitude,
-                    type,
-                    severity,
-                    status: "PENDING",
-                    createdAt: new Date(),
-                    acknowledgedBy: [],
-                });
-            }
-        }
-
-        res.json({
-            success: true,
-            message: "Incident distributed to nearby responders",
-            nearbyStations,
-        });
-
+      lookup = await findNearbyStations(departments, latitude, longitude);
     } catch (error) {
-        console.error("Distribution error:", error);
-        res.status(500).json({
-            error: "Failed to distribute incident",
-        });
+      console.warn("Station suggestions unavailable:", error.message);
     }
-};
 
-module.exports = {
-    getNearbyIncidents,
-    distributeIncidentToResponders,
-};
+    const reportRef = db.collection("reports").doc();
+    const timestamp = db.admin.firestore.FieldValue.serverTimestamp();
+    const report = {
+      type, description, location, mediaUrls,
+      latitude: Number(latitude), longitude: Number(longitude),
+      geohash: geoHash(latitude, longitude),
+      severity: triage.severity,
+      department: triage.department,
+      triageStatus: triage.triageStatus,
+      aiConfidence: triage.confidence,
+      status: "PENDING",
+      verifiedYes: 0, verifiedNo: 0, verifiedUnsure: 0,
+      createdBy: req.auth.uid,
+      createdAt: timestamp, updatedAt: timestamp,
+    };
+
+    const batch = db.batch();
+    batch.create(reportRef, report);
+    for (const department of departments) {
+      const key = department.toLowerCase().replace(/[^a-z]+/g, "_");
+      batch.create(db.collection("incident_distributions").doc(reportRef.id + "_" + key), {
+        reportId: reportRef.id,
+        responderType: department,
+        stations: lookup.stations.filter((s) => s.type === department),
+        latitude: Number(latitude), longitude: Number(longitude),
+        type, severity: triage.severity, location,
+        status: "PENDING", acknowledgedBy: [],
+        createdAt: timestamp, updatedAt: timestamp,
+      });
+    }
+    queueIncidentNotifications(batch, reportRef);
+    await batch.commit();
+    res.status(201).json({
+      success: true, reportId: reportRef.id,
+      triage, departments,
+      nearbyStations: lookup.stations,
+      stationSource: lookup.source,
+      dispatchStatus: "DEMO_ONLY",
+      message: "Report saved. Suggested facilities have not been contacted.",
+    });
+    // Attempt immediate delivery without delaying the reporter; the durable
+    // outbox and scheduled worker retry if the process exits or delivery fails.
+    setImmediate(() => processNotificationJobs().catch((error) =>
+      console.warn("Immediate notification processing deferred:", error.message)
+    ));
+  } catch (error) {
+    console.error("Report submission failed:", error);
+    res.status(500).json({ error: "Could not save your report. Please retry." });
+  }
+}
+
+async function getNearbyIncidents(req, res) {
+  if (!isValidCoordinates(req.body.latitude, req.body.longitude)) {
+    return res.status(400).json({ error: "Valid latitude and longitude are required." });
+  }
+  try {
+    const reports = await geoQuery(
+      "reports", Number(req.body.latitude), Number(req.body.longitude), 5
+    );
+    const active = reports.filter((r) => !["RESOLVED", "REJECTED", "ARCHIVED"].includes(r.status));
+    active.sort((a, b) => (b.createdAt?.toMillis?.() || 0) -
+      (a.createdAt?.toMillis?.() || 0));
+    res.json({ incidents: active.slice(0, 50) });
+  } catch (error) {
+    console.error("Nearby report query failed:", error);
+    res.status(500).json({ error: "Nearby incidents are temporarily unavailable." });
+  }
+}
+
+async function deleteReport(req, res) {
+  const id = req.params.id;
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+    return res.status(400).json({ error: "Invalid report identifier." });
+  }
+  const ref = db.collection("reports").doc(id);
+  const related = await db.collection("incident_distributions")
+    .where("reportId", "==", id).get();
+  const batch = db.batch();
+  batch.update(ref, {
+    status: "ARCHIVED",
+    archivedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+    archivedBy: req.auth.uid,
+  });
+  for (const distribution of related.docs) {
+    batch.update(distribution.ref, {
+      status: "ARCHIVED",
+      updatedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+  await batch.commit();
+  res.json({ success: true });
+}
+
+module.exports = { createReport, getNearbyIncidents, deleteReport };

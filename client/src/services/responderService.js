@@ -1,84 +1,14 @@
-import {
+import { apiFetch } from "./api";
 
-    API_BASE_URL,
+export const getResponderIncidents = (type) =>
+  apiFetch("/responder-incidents/" + encodeURIComponent(type));
 
-} from "../utils/constants";
+export const deployIncident = (id, source) =>
+  apiFetch("/deploy-incident/" + encodeURIComponent(id), {
+    method: "PUT", body: { source },
+  });
 
-/* Common Headers */
-const responderHeaders = {
-
-    "x-responder-key":
-
-        localStorage.getItem(
-            "responderType"
-        ),
-
-};
-
-/* Fetch incidents */
-export const getResponderIncidents =
-
-    async (type) => {
-
-        const response =
-
-            await fetch(
-
-                `${API_BASE_URL}/responder-incidents/${type}`,
-
-                {
-
-                    headers:
-                        responderHeaders,
-
-                }
-
-            );
-
-        return await response.json();
-
-    };
-
-/* Deploy */
-export const deployIncident =
-
-    async (id) => {
-
-        await fetch(
-
-            `${API_BASE_URL}/deploy-incident/${id}`,
-
-            {
-
-                method: "PUT",
-
-                headers:
-                    responderHeaders,
-
-            }
-
-        );
-
-    };
-
-/* Resolve */
-export const resolveIncident =
-
-    async (id) => {
-
-        await fetch(
-
-            `${API_BASE_URL}/resolve-incident/${id}`,
-
-            {
-
-                method: "PUT",
-
-                headers:
-                    responderHeaders,
-
-            }
-
-        );
-
-    };
+export const resolveIncident = (id, source) =>
+  apiFetch("/resolve-incident/" + encodeURIComponent(id), {
+    method: "PUT", body: { source },
+  });

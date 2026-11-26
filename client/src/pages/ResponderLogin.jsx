@@ -1,248 +1,68 @@
-import {
-    useState,
-} from "react";
-
-import {
-    useNavigate,
-} from "react-router-dom";
-
-import toast
-    from "react-hot-toast";
-
-import {
-    API_BASE_URL,
-} from "../utils/constants";
-
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { ArrowRight, RadioTower, ShieldCheck } from "lucide-react";
 import { auth } from "../firebase";
-import { signInWithCustomToken } from "firebase/auth";
 
-function ResponderLogin() {
-
-    const navigate =
-        useNavigate();
-
-    const [department, setDepartment] =
-        useState("");
-
-    const [password, setPassword] =
-        useState("");
-
-    const [showPassword, setShowPassword] = useState(false);
-
-    // Login
-    const handleLogin = async (e) => {
-        if (e) e.preventDefault();
-
-        try {
-
-            const response =
-
-                await fetch(
-
-                    `${API_BASE_URL}/responder-login`,
-
-                    {
-
-                        method: "POST",
-
-                        headers: {
-
-                            "Content-Type":
-                                "application/json",
-
-                        },
-
-                        body: JSON.stringify({
-
-                            department,
-
-                            password,
-
-                        }),
-
-                    }
-
-                );
-
-            const data =
-                await response.json();
-
-            // Error
-            if (data.error) {
-
-                toast.error(
-                    data.error
-                );
-
-                return;
-
-            }
-
-            // Save responder type
-            localStorage.setItem(
-
-                "responderType",
-
-                data.responderType
-
-            );
-
-            // Sign in to Firebase with Custom Token for secure database access
-            if (data.firebaseToken) {
-                await signInWithCustomToken(auth, data.firebaseToken);
-            }
-
-            toast.success(
-                "Login Successful"
-            );
-
-            // Redirect
-            if (
-
-                data.responderType ===
-                "Police"
-
-            ) {
-
-                navigate(
-                    "/responder/police"
-                );
-
-            }
-
-            else if (
-
-                data.responderType ===
-                "Ambulance"
-
-            ) {
-
-                navigate(
-                    "/responder/ambulance"
-                );
-
-            }
-
-            else {
-
-                navigate(
-                    "/responder/fire"
-                );
-
-            }
-
-        }
-
-        catch (error) {
-
-            console.error(error);
-
-            toast.error(
-                "Login failed"
-            );
-
-        }
-
-    };
-
-    return (
-
-        <div className="min-h-screen flex justify-center items-center bg-mesh text-white px-4">
-
-            <div className="glass-panel p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/10">
-
-                <h1 className="text-4xl font-extrabold mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">
-
-                    Responder Portal
-
-                </h1>
-
-                <form onSubmit={handleLogin} className="space-y-6">
-                    {/* Department */}
-                    <select
-                        id="department"
-                        name="department"
-                        value={department}
-
-                        onChange={(e) =>
-
-                            setDepartment(
-                                e.target.value
-                            )
-
-                        }
-
-                        className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-
-                    >
-
-                        <option value="">
-                            Select Department
-                        </option>
-
-                        <option value="Police">
-                            Police
-                        </option>
-
-                        <option value="Ambulance">
-                            Ambulance
-                        </option>
-
-                        <option value="Fire Brigade">
-                            Fire Brigade
-                        </option>
-
-                    </select>
-
-                    {/* Password */}
-                    <div className="relative">
-                        <input
-                            id="responder-password"
-                            name="responder-password"
-                            type={showPassword ? "text" : "password"}
-
-                            placeholder="Enter Password"
-
-                            value={password}
-
-                            onChange={(e) =>
-
-                                setPassword(
-                                    e.target.value
-                                )
-
-                            }
-
-                            className="w-full p-4 rounded-xl bg-slate-800/50 text-white border border-white/5 focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-12"
-
-                        />
-                        <button 
-                            type="button" 
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                        >
-                            {showPassword ? "🙈" : "👁️"}
-                        </button>
-                    </div>
-
-                    {/* Login */}
-                    <button
-                        type="submit"
-                        className="btn-premium w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 p-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-900/50"
-
-                    >
-
-                        Login
-
-                    </button>
-                </form>
-
-            </div>
-
-        </div>
-
-    );
-
+const DESTINATIONS = {
+  Police: "/responder/police",
+  Ambulance: "/responder/ambulance",
+  "Fire Brigade": "/responder/fire",
+};
+
+export default function ResponderLogin() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function login(event) {
+    event.preventDefault();
+    setPending(true);
+    setError("");
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const token = await credential.user.getIdTokenResult(true);
+      const path = DESTINATIONS[token.claims.department];
+      if (token.claims.role !== "responder" || !path) {
+        await signOut(auth);
+        throw new Error("This account has no approved responder department.");
+      }
+      navigate(path, { replace: true });
+    } catch (issue) {
+      setError(issue.code === "auth/invalid-credential"
+        ? "Email or password is incorrect." : issue.message);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <main className="portal-signin-page">
+      <div className="portal-signin-card">
+        <div className="portal-icon"><RadioTower size={25} /></div>
+        <p className="section-label">Secure access / response teams</p>
+        <h1>Responder sign in</h1>
+        <p>Sign in with your assigned team account. Your police, ambulance, or fire queue is selected from verified permissions.</p>
+        <form className="portal-signin-form" onSubmit={login}>
+          <label htmlFor="responder-email">Work email</label>
+          <input id="responder-email" type="email" autoComplete="username" required
+            placeholder="responder@example.com" value={email}
+            onChange={event => setEmail(event.target.value)} />
+          <label htmlFor="responder-password">Password</label>
+          <input id="responder-password" type="password" autoComplete="current-password" required
+            placeholder="Your account password" value={password}
+            onChange={event => setPassword(event.target.value)} />
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button className="button button-primary" type="submit" disabled={pending}>
+            <ShieldCheck size={18} /> {pending ? "Checking permissions…" : "Open responder workspace"}
+            <ArrowRight size={17} />
+          </button>
+        </form>
+        <p className="portal-signin-note">A responder account does not automatically establish dispatch connectivity with external emergency services.</p>
+        <Link to="/">Return to RescueNet <ArrowRight size={14} /></Link>
+      </div>
+    </main>
+  );
 }
-
-export default ResponderLogin;

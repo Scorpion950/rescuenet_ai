@@ -1,6 +1,7 @@
 const express = require("express");
 
 const router = express.Router();
+const { civilianAuth } = require("../middleware/authMiddleware");
 
 const {
     analyzeReport,
@@ -10,6 +11,7 @@ const {
 
 router.post(
     "/analyze-report",
+    civilianAuth,
     analyzeReport
 );
 

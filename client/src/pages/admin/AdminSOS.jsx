@@ -1,170 +1,83 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 import toast from "react-hot-toast";
+import { Archive, CheckCircle2, ExternalLink, MapPin, Siren, TriangleAlert } from "lucide-react";
+import { db } from "../../firebase";
+import { apiFetch } from "../../services/api";
+import { updateIncidentStatus } from "../../services/statusService";
 
-const SERVICE_CONFIG = {
-    "Police": { color: "bg-blue-600/20 text-blue-300 border-blue-500/30", icon: "🚓" },
-    "Ambulance": { color: "bg-rose-600/20 text-rose-300 border-rose-500/30", icon: "🚑" },
-    "Fire Brigade": { color: "bg-orange-600/20 text-orange-300 border-orange-500/30", icon: "🚒" },
-};
+export default function AdminSOS() {
+  const [alerts, setAlerts] = useState([]);
+  const [working, setWorking] = useState(null);
+  const [error, setError] = useState("");
+  useEffect(() => onSnapshot(collection(db, "sosAlerts"), (snapshot) => {
+    setAlerts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+  }, () => setError("SOS feed unavailable. Check network connectivity and role permissions.")), []);
 
-function AdminSOS() {
-    const [sosAlerts, setSosAlerts] = useState([]);
-    const [deletingId, setDeletingId] = useState(null);
+  const visible = alerts.filter(item => item.status !== "ARCHIVED");
+  const open = visible.filter(item => !["RESOLVED", "REJECTED"].includes(item.status)).length;
 
-    const deleteSOS = async (id) => {
-        if (!window.confirm("Delete this SOS alert permanently?")) return;
-        setDeletingId(id);
-        try {
-            await deleteDoc(doc(db, "sosAlerts", id));
-            toast.success("SOS alert removed");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete SOS alert");
-        } finally {
-            setDeletingId(null);
-        }
-    };
+  async function change(alert, action) {
+    if (!window.confirm(action === "archive"
+      ? "Archive this SOS while preserving the audit history?"
+      : "Mark this SOS request as resolved in RescueNet?")) return;
+    setWorking(alert.id);
+    try {
+      if (action === "archive") await apiFetch("/sos/" + encodeURIComponent(alert.id), { method: "DELETE" });
+      else await updateIncidentStatus(alert.id, "RESOLVED", "sos");
+      toast.success(action === "archive" ? "SOS archived" : "SOS marked resolved");
+    } catch (issue) { toast.error(issue.message); }
+    finally { setWorking(null); }
+  }
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(
-            collection(db, "sosAlerts"),
-            (snapshot) => {
-                const fetchedAlerts = [];
-                snapshot.forEach((doc) => fetchedAlerts.push({ id: doc.id, ...doc.data() }));
-                fetchedAlerts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                setSosAlerts(fetchedAlerts);
-            },
-            (error) => {
-                console.error("Firestore SOS snapshot error:", error);
-                toast.error("Real-time feed failed. Check your network.", { duration: 8000 });
-            }
-        );
-        return () => unsubscribe();
-    }, []);
-
-    const active = sosAlerts.filter(a => a.status !== "RESOLVED");
-    const resolved = sosAlerts.filter(a => a.status === "RESOLVED");
-
-    return (
-        <div className="min-h-screen p-6 md:p-10 text-white">
-
-            {/* Header */}
-            <div className="mb-10 flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-red-400 mb-1">RescueNet AI — Dispatch</p>
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-white">SOS Management</h1>
-                </div>
-                <div className="flex gap-3">
-                    <div className="glass-panel px-5 py-2.5 rounded-xl border border-red-500/30 text-center">
-                        <p className="text-2xl font-black text-red-400">{active.length}</p>
-                        <p className="text-xs text-slate-400">Active</p>
+  return (
+    <main className="portal-content">
+      <div className="portal-section-heading">
+        <div><p className="section-label"><Siren size={15}/> Administration / priority queue</p>
+          <h1>Emergency SOS requests</h1>
+          <p>Review requests, nearby facility suggestions, and closure status.</p></div>
+        <span className="portal-count">{open} active requests</span>
+      </div>
+      {error && <p className="portal-error" role="alert">{error}</p>}
+      {visible.length === 0 ? <div className="portal-empty"><CheckCircle2 size={33}/><h2>No SOS requests yet</h2></div> :
+        <div className="portal-card-grid">
+          {visible.map(alert =>
+            <article className="portal-incident-card" key={alert.id}>
+              <div className="portal-incident-topline">
+                <span className="portal-type sos"><TriangleAlert size={15}/> SOS REQUEST</span>
+                <span className="portal-status">{alert.status || "PENDING"}</span>
+              </div>
+              <h2>{(alert.services || []).join(" + ") || "Emergency"}</h2>
+              <p className="portal-incident-location"><MapPin size={16}/>
+                {alert.location || "Location from GPS"}</p>
+              <p className="portal-card-date">{alert.createdAt?.seconds ?
+                new Date(alert.createdAt.seconds * 1000).toLocaleString("en-IN") : "Recently"}</p>
+              <div className="portal-station-list">
+                <strong className="portal-card-subtitle">Nearby facility suggestions</strong>
+                {(alert.suggestedStations || alert.assignedStations || []).length ?
+                  (alert.suggestedStations || alert.assignedStations).slice(0, 3).map((station, index) =>
+                    <div className="portal-station-row" key={station.id || index}>
+                      <span>{station.name}<small>{station.type} · {station.source || "legacy record"}</small></span>
+                      <strong>{station.distance} km</strong>
                     </div>
-                    <div className="glass-panel px-5 py-2.5 rounded-xl border border-white/10 text-center">
-                        <p className="text-2xl font-black text-slate-300">{resolved.length}</p>
-                        <p className="text-xs text-slate-400">Resolved</p>
-                    </div>
-                </div>
-            </div>
-
-            {sosAlerts.length === 0 ? (
-                <div className="glass-panel rounded-2xl border border-white/10 p-16 text-center">
-                    <div className="text-6xl mb-4">✅</div>
-                    <h2 className="text-2xl font-bold text-slate-300">No active SOS alerts</h2>
-                    <p className="text-slate-500 mt-2">All clear. Real-time monitoring is active.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 animate-fade-in-up">
-                    {sosAlerts.map((alert) => {
-                        const isResolved = alert.status === "RESOLVED";
-                        return (
-                            <div key={alert.id}
-                                className={`glass-panel rounded-2xl border transition-all duration-300 overflow-hidden ${isResolved ? "border-white/10 opacity-60" : "border-red-500/40 emergency-glow"}`}>
-
-                                {/* Top bar */}
-                                <div className={`px-6 py-3 flex items-center justify-between ${isResolved ? "bg-slate-800/50" : "bg-red-900/30"}`}>
-                                    <div className="flex items-center gap-2">
-                                        {!isResolved && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
-                                        <span className="text-xs font-bold uppercase tracking-widest text-slate-300">
-                                            {isResolved ? "RESOLVED" : "ACTIVE SOS"}
-                                        </span>
-                                    </div>
-                                    <span className="text-xs text-slate-500">
-                                        {alert.createdAt?.seconds
-                                            ? new Date(alert.createdAt.seconds * 1000).toLocaleString("en-IN", { hour12: true, hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })
-                                            : "—"}
-                                    </span>
-                                </div>
-
-                                <div className="p-6 space-y-5">
-                                    {/* Services */}
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Services Requested</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {alert.services?.map((s) => {
-                                                const cfg = SERVICE_CONFIG[s] || { color: "bg-slate-700/50 text-slate-300 border-white/10", icon: "🚨" };
-                                                return (
-                                                    <span key={s} className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border ${cfg.color}`}>
-                                                        {cfg.icon} {s}
-                                                    </span>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Location */}
-                                    <div className="flex items-start gap-3 bg-slate-900/50 rounded-xl p-3 border border-white/5">
-                                        <span className="text-lg mt-0.5">📍</span>
-                                        <div>
-                                            <p className="text-xs text-slate-500 mb-0.5">Location</p>
-                                            <p className="font-semibold text-slate-200">{alert.location || "Unknown Area"}</p>
-                                            {alert.latitude && alert.longitude && (
-                                                <a href={`https://www.google.com/maps?q=${alert.latitude},${alert.longitude}`}
-                                                    target="_blank" rel="noopener noreferrer"
-                                                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block">
-                                                    View on Maps →
-                                                </a>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Assigned Stations */}
-                                    {alert.assignedStations?.length > 0 && (
-                                        <div>
-                                            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Assigned Stations</p>
-                                            <div className="space-y-2">
-                                                {alert.assignedStations.map((station, i) => (
-                                                    <div key={i} className="flex items-center justify-between bg-slate-900/50 rounded-xl px-4 py-2.5 border border-white/5">
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-blue-300">{station.name}</p>
-                                                            <p className="text-xs text-slate-500">{station.type}</p>
-                                                        </div>
-                                                        <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2.5 py-1 rounded-lg">
-                                                            {station.distance} km
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Delete */}
-                                    <button
-                                        onClick={() => deleteSOS(alert.id)}
-                                        disabled={deletingId === alert.id}
-                                        className="w-full py-3 rounded-xl font-bold text-sm border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
-                                    >
-                                        {deletingId === alert.id ? "Removing…" : "🗑 Remove Alert"}
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
+                  ) : <p>No nearby facilities could be found.</p>}
+                <small>Suggestions only; no external service has received this request automatically.</small>
+              </div>
+              {alert.latitude != null && alert.longitude != null &&
+                <a className="portal-map-link" target="_blank" rel="noopener noreferrer"
+                  href={"https://www.google.com/maps?q=" + encodeURIComponent(alert.latitude + "," + alert.longitude)}>
+                  View location <ExternalLink size={14}/>
+                </a>}
+              <div className="portal-card-actions">
+                <button type="button" className="button button-outline"
+                  disabled={working === alert.id || ["RESOLVED", "REJECTED"].includes(alert.status)}
+                  onClick={() => change(alert, "resolve")}><CheckCircle2 size={15}/> Resolve</button>
+                <button type="button" className="button button-primary" disabled={working === alert.id}
+                  onClick={() => change(alert, "archive")}><Archive size={15}/> Archive</button>
+              </div>
+            </article>)}
+        </div>}
+    </main>
+  );
 }
-
-export default AdminSOS;

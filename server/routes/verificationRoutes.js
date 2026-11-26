@@ -1,16 +1,6 @@
 const express = require("express");
-
+const { civilianAuth } = require("../middleware/authMiddleware");
+const { verifyIncident } = require("../controllers/verificationController");
 const router = express.Router();
-
-const {
-    verifyIncident,
-} = require(
-    "../controllers/verificationController"
-);
-
-router.post(
-    "/verify-incident",
-    verifyIncident
-);
-
+router.post("/verify-incident", civilianAuth, verifyIncident);
 module.exports = router;

@@ -4,8 +4,12 @@ import { Auth0Provider } from "@auth0/auth0-react";
 
 import App from "./App";
 import "./index.css";
+import "./rescuenet.css";
+import "./workflows.css";
+import "./portals.css";
 import "leaflet/dist/leaflet.css";
 import { Toaster } from "react-hot-toast";
+import { CivilianSessionProvider } from "./context/CivilianSessionContext";
 
 import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -28,13 +32,20 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <Auth0Provider
       domain={domain}
       clientId={clientId}
+      onRedirectCallback={(appState) => {
+        const destination = appState?.returnTo || window.location.pathname;
+        window.history.replaceState({}, document.title, destination);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }}
       authorizationParams={{
         redirect_uri: window.location.origin,
+        audience: import.meta.env.VITE_AUTH0_AUDIENCE,
       }}
-      cacheLocation="localstorage"
     >
       <Toaster position="top-right" />
-      <App />
+      <CivilianSessionProvider>
+        <App />
+      </CivilianSessionProvider>
     </Auth0Provider>
   </React.StrictMode>
 );

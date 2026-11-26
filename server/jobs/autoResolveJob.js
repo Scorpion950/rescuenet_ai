@@ -1,155 +1,35 @@
-const cron =
-    require("node-cron");
-
-const db =
-    require(
-        "../config/firebase"
-    );
-
-// Auto Resolve Every 5 Minutes
-const startAutoResolveJob = () => {
-
-    cron.schedule(
-
-        "*/5 * * * *",
-
-        async () => {
-
-            console.log(
-                "Checking incidents..."
-            );
-
-            try {
-
-                const reportsSnapshot =
-                    await db
-                        .collection("reports")
-                        .get();
-
-                const now =
-                    Date.now();
-
-                // Proper async loop
-                for (
-
-                    const doc of reportsSnapshot.docs
-
-                ) {
-
-                    const report =
-                        doc.data();
-
-                    // Skip resolved incidents
-                    if (
-
-                        report.status ===
-                        "RESOLVED"
-
-                    ) {
-
-                        continue;
-
-                    }
-
-                    let createdAt;
-
-                    // Firestore Timestamp
-                    if (
-
-                        report.createdAt?._seconds
-
-                    ) {
-
-                        createdAt =
-
-                            report.createdAt
-                                ._seconds * 1000;
-
-                    }
-
-                    // Normal Date String
-                    else {
-
-                        createdAt =
-                            new Date(
-
-                                report.createdAt
-
-                            ).getTime();
-
-                    }
-
-                    // Invalid timestamp safety
-                    if (
-
-                        !createdAt ||
-
-                        isNaN(createdAt)
-
-                    ) {
-
-                        continue;
-
-                    }
-
-                    const THIRTY_MINUTES =
-
-                        30 * 60 * 1000;
-
-                    const expired =
-
-                        now - createdAt >
-
-                        THIRTY_MINUTES;
-
-                    // Auto Resolve
-                    if (expired) {
-
-                        await db
-
-                            .collection(
-                                "reports"
-                            )
-
-                            .doc(doc.id)
-
-                            .update({
-
-                                status:
-                                    "RESOLVED",
-
-                            });
-
-                        console.log(
-
-                            `Resolved: ${doc.id}`
-
-                        );
-
-                    }
-
-                }
-
-            } catch (error) {
-
-                console.error(
-
-                    "Auto resolve error:",
-
-                    error
-
-                );
-
-            }
-
-        }
-
-    );
-
-};
-
-module.exports = {
-
-    startAutoResolveJob,
-
-};
+const cron = require("node-cron");
+const db = require("../config/firebase");
+const { processNotificationJobs } = require("../services/notifications");
+
+let busy = false;
+function startAutoResolveJob() {
+  cron.schedule("* * * * *", async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      await processNotificationJobs();
+      // Stale reports need human review. They must never be automatically
+      // labeled RESOLVED just because 30 minutes have elapsed.
+      const cutoff = db.admin.firestore.Timestamp.fromMillis(
+        Date.now() - 24 * 60 * 60 * 1000
+      );
+      const oldPending = await db.collection("reports")
+        .where("status", "==", "PENDING")
+        .where("createdAt", "<=", cutoff).limit(50).get();
+      for (const item of oldPending.docs) {
+        await item.ref.update({
+          status: "NEEDS_REVIEW",
+          reviewReason: "No confirmation after 24 hours",
+          updatedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error("Background job failed:", error);
+    } finally {
+      busy = false;
+    }
+  });
+}
+
+module.exports = { startAutoResolveJob };

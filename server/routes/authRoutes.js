@@ -1,120 +1,62 @@
-const express =
-    require("express");
-
+const express = require("express");
+const crypto = require("node:crypto");
 const db = require("../config/firebase");
-const admin = db.admin;
+const { requireAuth } = require("../middleware/authMiddleware");
 
-const router =
-    express.Router();
+const router = express.Router();
+let verifier;
 
-/* RESPONDER LOGIN */
-router.post(
+async function verifyAuth0Token(token) {
+  const domain = process.env.AUTH0_DOMAIN;
+  const audience = process.env.AUTH0_AUDIENCE;
+  if (!domain || !audience) {
+    throw new Error("Auth0 API verification has not been configured.");
+  }
 
-    "/responder-login",
+  const issuer = "https://" + domain.replace(/^https?:\/\//, "").replace(/\/+$/, "") + "/";
+  if (!verifier || verifier.issuer !== issuer) {
+    const { createRemoteJWKSet } = await import("jose");
+    verifier = {
+      issuer,
+      keys: createRemoteJWKSet(new URL(issuer + ".well-known/jwks.json")),
+    };
+  }
+  const { jwtVerify } = await import("jose");
+  const result = await jwtVerify(token, verifier.keys, {
+    issuer, audience, algorithms: ["RS256"],
+  });
+  if (!result.payload.sub) throw new Error("Auth0 token has no subject.");
+  return result.payload.sub;
+}
 
-    async (req, res) => {
+// Bridge a verified Auth0 civilian session to Firebase Auth so Firestore rules
+// and backend operations use one consistent identity.
+router.post("/auth/firebase-token", async (req, res) => {
+  const match = /^Bearer\s+(\S+)$/i.exec(req.get("authorization") || "");
+  if (!match) return res.status(401).json({ error: "Auth0 access token required." });
+  try {
+    const subject = await verifyAuth0Token(match[1]);
+    const uid = "civilian_" + crypto.createHash("sha256")
+      .update(subject).digest("hex").slice(0, 40);
+    const firebaseToken = await db.admin.auth()
+      .createCustomToken(uid, { role: "civilian" });
+    res.json({ firebaseToken });
+  } catch (error) {
+    console.error("Auth0 token exchange failed:", error.message);
+    res.status(401).json({ error: "Could not verify your Auth0 session." });
+  }
+});
 
-        const {
+router.get("/auth/me", requireAuth, (req, res) => {
+  res.json({ user: req.auth });
+});
 
-            department,
-            password,
-
-        } = req.body;
-
-        const credentials = {
-
-            Police:
-                process.env.POLICE_PASSWORD,
-
-            Ambulance:
-                process.env.AMBULANCE_PASSWORD,
-
-            "Fire Brigade":
-                process.env.FIRE_PASSWORD,
-
-        };
-
-        // Valid
-        if (
-
-            credentials[department] === password
-
-        ) {
-            try {
-                // Generate a custom token for the responder
-                const firebaseToken = await admin.auth().createCustomToken(`responder_${department.replace(/\s+/g, '')}`);
-                
-                return res.json({
-
-                    success: true,
-
-                    responderType:
-                        department,
-
-                    firebaseToken,
-
-                });
-            } catch (error) {
-                console.error("Firebase custom token error:", error);
-                return res.status(500).json({ error: "Failed to generate auth token" });
-            }
-        }
-
-        // Invalid
-        return res.status(401).json({
-
-            error:
-                "Invalid credentials",
-
-        });
-
-    }
-
-);
-
-/* ADMIN LOGIN */
-router.post(
-
-    "/admin-login",
-
-    async (req, res) => {
-
-        const { password } =
-            req.body;
-
-        if (
-
-            password ===
-            process.env.ADMIN_PASSWORD
-
-        ) {
-            try {
-                // Generate a custom token for the admin
-                const firebaseToken = await admin.auth().createCustomToken("admin_user");
-
-                return res.json({
-
-                    success: true,
-
-                    firebaseToken,
-
-                });
-            } catch (error) {
-                console.error("Firebase custom token error:", error);
-                return res.status(500).json({ error: "Failed to generate auth token" });
-            }
-
-        }
-
-        return res.status(401).json({
-
-            error:
-                "Invalid admin password",
-
-        });
-
-    }
-
-);
+// Passwords shared across an entire department are not suitable for live
+// responder authentication. Provision individual Firebase Auth users instead.
+router.post(["/responder-login", "/admin-login"], (_req, res) => {
+  res.status(410).json({
+    error: "Legacy shared-password login was disabled. Use your verified account.",
+  });
+});
 
 module.exports = router;

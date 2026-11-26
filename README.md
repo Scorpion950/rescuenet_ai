@@ -1,363 +1,139 @@
-# RescueNet AI
+# RescueNet AI — community incident awareness (rebuild)
 
-**AI-Powered Disaster Management & Emergency Response Platform**
+RescueNet is a React + Express + Firebase demonstration of community reporting, interactive incident mapping, nearby alerts, and role-scoped response queues.
 
-[![Live Demo](https://img.shields.io/badge/Live-rescuenet--ai.netlify.app-success?style=flat-square)](https://rescuenet-ai.netlify.app)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-16+-green?style=flat-square)](https://nodejs.org)
+> **Not a functioning emergency-dispatch service.** The site does **not** call police, ambulance services, fire brigades, or hospitals. Suggested facilities come from map data and are **not** verified dispatch partners. For a real emergency, contact the official emergency number in your area. Do not use this demo as a substitute.
 
----
+## What's included
 
-## Overview
+| Area | Rebuilt behavior |
+| --- | --- |
+| Civilian reporting | Auth0 login bridged to Firebase Auth, GPS on request, Cloudinary photos and videos, validated server-side report creation |
+| AI triage | Server-side Gemini classification when configured; honest `UNASSESSED / NEEDS_REVIEW` fallback otherwise |
+| Live map | Firestore real-time updates, worldwide incidents, severity filters, clustered pins, illustrative radius overlays, media |
+| Community verification | One vote per authenticated Firebase UID in a Firestore transaction; changing a vote correctly changes counters |
+| SOS | Select requested departments, get location, save a uniquely keyed demo request, show up to three nearest facility suggestions per service |
+| Nearest facilities | OpenStreetMap Overpass lookups within 25 km, Haversine ranking, 10-minute cache; labeled local sample fallback only within 50 km |
+| Nearby warnings | Consent-based geohash search within 5 km; persistent in-app notifications and a retryable job queue |
+| Entry warnings | When the opted-in website shares new coordinates, it checks active incidents nearby and creates a notification once per incident |
+| Optional browser push | FCM token registration and web push; **delivery disabled** until the backend operator explicitly enables it |
+| Roles | Individual Firebase Auth admin/responder accounts with server-verified custom claims; shared department passwords retired |
+| Report lifecycle | Archived instead of permanently deleted; deployment and resolution require authorized account actions; no automatic 30-minute resolution |
+| Frontend | Updated responsive civic-style design, accessible forms, route-based code splitting, mobile map and operations screens |
 
-RescueNet AI is an enterprise-grade disaster management platform that bridges the critical communication gap between civilians, emergency responders, and administrators during disaster situations. The platform leverages AI-powered incident triage, real-time geolocation, and automated emergency dispatch to optimize response times and save lives.
+## Local development
 
-**Key Problem Solved:** Eliminates communication delays during emergencies by automatically classifying incident severity, identifying appropriate response teams, and alerting nearby civilians within danger zones.
+Requires a maintained Node.js release (Node 22+ recommended), a Firebase project with **Authentication / Firestore**, an Auth0 tenant and custom API, and optionally Cloudinary and a Gemini API key.
 
----
+1. Install packages:
 
-## Core Features
+   ```bash
+   cd server && npm ci
+   cd ../client && npm ci
+   ```
 
-### 🤖 AI-Powered Incident Triage
-- **Google Gemini Vision & Pro Integration:** Analyzes text descriptions and media (images/videos) to automatically classify incident severity (Critical → High → Medium → Low)
-- **Smart Department Assignment:** Auto-assigns incidents to appropriate response teams (Police, Fire, Medical)
-- **Multi-Model Fallback:** Implements model candidacy with graceful degradation for reliability
-- **Sub-2-second Response Time:** Optimized for emergency scenarios
+2. Copy `server/.env.example` to `server/.env`, and `client/.env.example` to `client/.env`. Fill in the values for **your** projects. Never put a Firebase Admin service account in `client/.env` or the browser bundle.
 
-### 📍 Intelligent Geolocation Alerts
-- **5km Danger Radius Detection:** Automatically calculates affected zone around incident
-- **Twilio SMS Integration:** Real-time SMS notifications to all registered users within danger zone
-- **Escape Route Guidance:** Provides actionable safety recommendations to civilians
-- **Live GPS Tracking:** Real-time incident location monitoring and updates
+3. **Firebase**:
+   - Enable Email/Password sign-in for individual operations accounts.
+   - Enable Cloud Firestore; configure Firebase Authentication authorized domains.
+   - Deploy `firestore.rules` and `firestore.indexes.json` with the Firebase CLI: `firebase deploy --only firestore`. Review rules before deploying into an existing Firebase project.
+   - **For local development:** place your private `serviceAccountKey.json` into `server/`. The backend now detects it automatically for compatibility with older versions. The file is ignored by Git and deliberately absent from this ZIP.
+   - Alternatively set `FIREBASE_SERVICE_ACCOUNT_PATH` or `GOOGLE_APPLICATION_CREDENTIALS` to the key file path. For cloud deployment, prefer a server-only `FIREBASE_SERVICE_ACCOUNT` JSON secret or managed workload identity. Never commit the Admin key or expose it in `VITE_*` variables.
+   - App credentials in `VITE_FIREBASE_*` are Firebase's public **web configuration**, not the Admin key.
 
-### 📷 Native Camera Integration
-- **Hardware-Accelerated Capture:** Direct access to device camera (flash, zoom, 4K recording)
-- **In-App Media Recording:** High-quality photo and video capture without app download
-- **Cloudinary Optimization:** Automatic media compression and CDN delivery
-- **Evidence Preservation:** Timestamped incident documentation
+4. **Auth0**:
+   - Create an SPA application. Add `http://localhost:5173` as an allowed callback/logout/web origin, along with your eventual HTTPS frontend domain.
+   - Create a custom API with an audience (identifier) that matches both `AUTH0_AUDIENCE` on the server and `VITE_AUTH0_AUDIENCE` on the client. Access tokens are verified against Auth0's RS256 JWKS before Firebase custom tokens are minted.
+   - Match `AUTH0_DOMAIN` and `VITE_AUTH0_DOMAIN`.
+   - After authorization, civilian users sign into Firebase via the token-exchange endpoint. They must **opt in again** to any location alerts; old phone number collection does not imply permission.
 
-### 🔐 Multi-Layer Role-Based Access Control
-- **Civilian Authentication:** Auth0 OAuth 2.0 (Google) + SMS phone verification
-- **Responder Isolation:** Department-specific credentials (Police/Fire/Medical)
-- **Admin Hardware Keys:** Secure secondary authentication for administrative access
-- **Anonymous Map Access:** Unauthenticated Live Map viewing with read-only permissions
+5. **Operations accounts**: create distinct Firebase Email/Password users in the Firebase console, then grant role claims using the trusted server environment:
 
-### 📊 Real-Time Incident Dashboard
-- **Leaflet.js Interactive Maps:** Custom hazard zone visualization with marker clustering
-- **Department-Specific Dashboards:** Tailored views for Civilians, Responders, and Admins
-- **Live Status Updates:** WebSocket-powered real-time incident synchronization
-- **Automatic Incident Resolution:** Node-Cron scheduled jobs for incident lifecycle management
+   ```bash
+   cd server
+   node scripts/setRole.js admin@example.com admin
+   node scripts/setRole.js police@example.com responder Police
+   node scripts/setRole.js med@example.com responder Ambulance
+   node scripts/setRole.js fire@example.com responder "Fire Brigade"
+   ```
 
----
+   The actual department and role are verified in Firebase ID tokens, **not** accepted from localStorage, the client UI, or editable request headers. Users must sign out and in after claims change.
 
-## Technology Stack
+6. **Media (optional)**: create a Cloudinary unsigned upload preset with sensible upload limits and restrictions, configure `VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET` and the corresponding server-side `CLOUDINARY_CLOUD_NAME`. Supported images: JPEG/PNG/WebP, up to 8 MB. Videos: MP4/WebM/QuickTime, up to 35 MB. Up to five attachments per report. Reports without attachments require no Cloudinary setup.
 
-### Frontend
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Framework** | React 18 + Vite | Component-based UI with instant HMR |
-| **Styling** | Tailwind CSS 4 | Utility-first glassmorphism design system |
-| **Routing** | React Router v7 | SPA navigation and protected routes |
-| **Mapping** | Leaflet.js + React-Leaflet | Interactive geospatial visualization |
-| **Clustering** | React-Leaflet Cluster | Optimized marker rendering at scale |
-| **UI Feedback** | React Hot Toast | Non-blocking notifications |
-| **Authentication** | Auth0 React SDK | OAuth 2.0 integration |
-| **AI Models** | Google Generative AI | Client-side Gemini API calls |
+7. Start each app in its own terminal:
 
-### Backend
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Runtime** | Node.js 16+ | JavaScript server runtime |
-| **Framework** | Express 5 | Minimal web application framework |
-| **Database** | Firebase Firestore | Real-time NoSQL document store |
-| **Authentication** | Firebase Admin SDK | Server-side auth token verification |
-| **AI Models** | Google Generative AI | Gemini Vision + Pro models |
-| **SMS Gateway** | Twilio SDK | SMS delivery and management |
-| **Media CDN** | Cloudinary | Image/video optimization and delivery |
-| **Job Scheduling** | Node-Cron | Scheduled incident lifecycle tasks |
-| **Rate Limiting** | Express Rate Limit | API protection against abuse |
-| **CORS** | CORS Middleware | Cross-origin request handling |
+   ```bash
+   cd server && npm run dev
+   cd client && npm run dev
+   ```
 
-### Infrastructure & Deployment
-- **Frontend Hosting:** Netlify (with Vercel alternative)
-- **Database Hosting:** Firebase Cloud
-- **Service Accounts:** Firebase Admin SDK configuration
-- **Environment Management:** Dotenv for secrets management
+   The frontend uses `http://localhost:5173`; the API defaults to `http://localhost:5000`. Backend `GET /health` exposes a non-secret demo status.
 
----
+### Windows PowerShell: common startup fixes
 
-## Architecture
+If Vite says **`Failed to resolve import "lucide-react"`**, stop the frontend server with Ctrl+C and reinstall dependencies using the included lockfile:
 
-```
-RescueNet AI
-├── Frontend (React 18 + Vite)
-│   ├── Pages (Report, SOS, Live Map, Admin/Responder Dashboards)
-│   ├── Components (AlertCard, MapPopup, Navbar, Protected Routes)
-│   ├── Services (AI Analysis, Incident Management, Responder Coordination)
-│   ├── Hooks (useNearbyAlerts for real-time updates)
-│   └── Layouts (Role-specific UI templates)
-│
-└── Backend (Node.js + Express)
-    ├── Routes (AI, Auth, Incidents, Responders, SMS, SOS, Status)
-    ├── Controllers (Business logic for each domain)
-    ├── Middleware (Authentication, Authorization, Rate Limiting)
-    ├── Services (Gemini AI, Twilio SMS, Distance Calculation)
-    ├── Jobs (Auto-resolve, Incident Cleanup)
-    └── Data (Predefined emergency response stations)
-```
-
----
-
-## User Roles & Workflows
-
-| Role | Authentication | Primary Functions | Dashboard |
-|------|----------------|------------------|-----------|
-| **Civilian** | Auth0 + SMS Verify | Create Reports, SOS Alerts, View Live Map, Receive SMS Alerts | Personal Incident History |
-| **Responder** | Firebase Auth | Deploy to Incidents, Update Status, Navigate GPS, View Department Queue | Department-Specific Queue |
-| **Administrator** | Hardware Key + Firebase | Global Incident Control, Responder Management, System Oversight, Reports | Global Analytics Dashboard |
-
----
-
-## Project Structure
-
-```
-rescuenet_ai/
-├── client/                          # React frontend
-│   ├── src/
-│   │   ├── pages/                   # Route pages
-│   │   ├── components/              # Reusable UI components
-│   │   ├── layouts/                 # Role-specific layouts
-│   │   ├── services/                # API integration layer
-│   │   ├── hooks/                   # Custom React hooks
-│   │   ├── context/                 # Global state (LocationContext)
-│   │   ├── utils/                   # Helpers (constants, AI utils)
-│   │   └── firebase.js              # Firebase configuration
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   └── index.html
-│
-├── server/                          # Node.js backend
-│   ├── controllers/                 # Business logic
-│   ├── routes/                      # API endpoints
-│   ├── middleware/                  # Auth, validation, rate limiting
-│   ├── jobs/                        # Scheduled tasks
-│   ├── utils/                       # Distance calc, station lookup
-│   ├── config/                      # Firebase admin setup
-│   ├── data/                        # Seed data (stations)
-│   ├── package.json
-│   └── index.js
-│
-└── README.md                        # This file
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-- **Node.js** v16 or higher
-- **npm** 8+ (or yarn)
-- **Firebase Project** (Firestore database enabled)
-- **Google Gemini API Key** (from ai.google.dev)
-- **Twilio Account** (SID, Auth Token, Phone Number)
-- **Auth0 Application** (OAuth 2.0 credentials for Google)
-- **Cloudinary Account** (Cloud Name, Upload Preset)
-
-### Installation
-
-#### 1. Clone Repository
-```bash
-git clone https://github.com/Scorpion950/rescuenet_ai.git
-cd rescuenet_ai
-```
-
-#### 2. Backend Setup
-```bash
-cd server
-npm install
-
-# Create .env file with required variables:
-# GEMINI_API_KEY=your_google_gemini_key
-# FIREBASE_PROJECT_ID=your_firebase_project_id
-# TWILIO_ACCOUNT_SID=your_twilio_sid
-# TWILIO_AUTH_TOKEN=your_twilio_token
-# TWILIO_PHONE_NUMBER=your_twilio_number
-
-# Start server (development)
+```powershell
+cd "E:\My Projects\RescueNet_Ai\client"
+npm ci
 npm run dev
-
-# Or production
-npm start
 ```
 
-Server will run on `http://localhost:5000` (or configured PORT)
+`npm ci` installs every dependency defined in `client/package-lock.json`, including `lucide-react`. Existing `node_modules` folders copied from an older version are not compatible with the rebuild. The frontend now checks for missing packages before starting Vite and gives an installation hint.
 
-#### 3. Frontend Setup
+If the backend says **Firebase Admin credentials are missing**, supply your own private Firebase service-account JSON. In the Firebase console, open **Project settings → Service accounts**, and generate a new key if needed. Store it locally as `server/serviceAccountKey.json`; it will be picked up automatically. You can instead point `GOOGLE_APPLICATION_CREDENTIALS` to a local file; Windows paths with spaces should be quoted in `server/.env`:
+
+```dotenv
+GOOGLE_APPLICATION_CREDENTIALS="E:/My Projects/RescueNet_Ai/server/serviceAccountKey.json"
+```
+
+Never paste the private key into a chat, commit it to Git, or include it in a deployable ZIP. If the original key was previously distributed, revoke/rotate it. **Hosted deployments** should use server-side secrets or workload identity, not a committed JSON key.
+
+For a fully isolated local test without production credentials, run both the Firestore and Firebase Authentication emulators and configure `FIRESTORE_EMULATOR_HOST` plus `FIREBASE_AUTH_EMULATOR_HOST`. Emulator mode is blocked when `NODE_ENV=production`.
+
+## How nearby notifications work
+
+1. A user signs in and explicitly turns on **Nearby alerts**, then shares their position. Only consenting users have coordinates/geohashes persisted.
+2. A report is committed in one Firestore batch with its department queue records and a `notification_jobs` outbox entry. It becomes visible on the map immediately.
+3. The one-minute background job processes the outbox and queries consenting, recently located users within a true **5 km radius**; each receives at most one in-app notice for that report.
+4. When a browser session has location updates running, movement syncs coordinates (usually after ~100 m / 60 seconds) and checks for active reports at the new position. This covers **entering a circle while using the site**.
+5. Optional FCM browser notifications can also be delivered for new reports to already-subscribed clients. Set `VITE_FIREBASE_VAPID_KEY` (Web Push key), use HTTPS in deployment (localhost is allowed for development), and set `ENABLE_PUSH_DELIVERY=true` on the server **only after consent and delivery testing**.
+
+**Web limitation:** browsers do not provide dependable background GPS geofencing once a page is closed. Entry alerts need a running/active page and user location consent. For reliable closed-app entry detection, a native mobile app or dedicated background location integration is required. FCM push does **not** acquire background GPS.
+
+**SMS:** The old Twilio mass-SMS flow was removed from this version. Mobile phone numbers are not required; browser and in-app alerts replace it in the demo. If SMS is reintroduced, it should be queued, explicitly opted into, rate-limited, and legally reviewed before delivery.
+
+## Migration from older RescueNet data
+
+- All new reports store a `geohash`. Old reports without one still show on the real-time map, but will not appear in efficient nearby lookups.
+- From a trusted server machine run `node scripts/backfillGeohashes.js` for a **dry run**; run `node scripts/backfillGeohashes.js --apply` only after reviewing your backup and results.
+- Historical statuses (`VERIFIED & LIVE`, `NOT SURE`) are still visible on the map. Newly created reports use the updated statuses.
+- Legacy user profiles were keyed by the raw Auth0 ID; newly bridged Firebase accounts use a hash-prefixed UID. User preferences and locations are **not silently migrated**. Ask users to opt in afresh.
+- Older `incident_distributions` records with lowercase department types may need a separate one-off administrative migration. New records are normalized. Keep backups before modifying production data.
+- Old unsafely distributed service-account keys, Twilio tokens, and OAuth/API secrets found in the original ZIP were **not included** in this rebuild. **Rotate them** in the provider consoles before deploying.
+
+## Tests
+
 ```bash
-cd ../client
-npm install
-
-# Create .env file:
-# VITE_API_BASE_URL=http://localhost:5000
-# VITE_FIREBASE_API_KEY=your_firebase_key
-# VITE_AUTH0_DOMAIN=your_auth0_domain
-# VITE_AUTH0_CLIENT_ID=your_auth0_client_id
-
-# Start development server
-npm run dev
-
-# Production build
-npm run build
+cd server && npm test
+cd client && npm run lint
+cd client && npm run build
 ```
 
-Frontend will run on `http://localhost:5173`
+The server tests cover canonical departments, GPS validity, Haversine calculations, OSM proximity sorting, unavailable-station fallback, credential source selection, and HTTP startup/auth checks. **Live** Auth0/Firebase/Cloudinary/Gemini/FCM integration tests are not part of this package and must be performed with your credentials and a staging environment before any real deployment.
 
----
+## Deployment safety checklist
 
-## API Endpoints
+- Deploy backend only to a trusted server environment; never publish the Admin service account or `server/.env`.
+- Configure matching Auth0 audience/domain and Firebase project credentials on both applications.
+- Review exact CORS origins (`FRONTEND_URL`, comma-separated for multiple deployments), security headers, Firebase authorized domains, and HTTPS. Configure `TRUST_PROXY_HOPS` for your actual reverse-proxy topology (0 for local use).
+- Deploy Firestore rules and indexes, then provision individual role-based users.
+- Ensure **one scheduled job runner** is active or provide a distributed job scheduling strategy.
+- Configure media upload limits, server rate limits, map service quotas, and incident/report moderation workflows.
+- If external emergency integrations are ever introduced: establish written station partnerships, explicit recipient registration, delivery acknowledgements, escalation/fallback procedures, abuse monitoring, and legal review. **The current code does not perform real dispatch.**
 
-### Incident Management
-- `POST /api/incidents` - Create new incident report
-- `GET /api/incidents` - Fetch nearby incidents (with geofencing)
-- `PUT /api/incidents/:id` - Update incident status
-- `GET /api/incidents/:id` - Get incident details
+### Project-local UI skill
 
-### AI Analysis
-- `POST /api/analyze-report` - Analyze incident via Gemini (severity + department)
-
-### Responder Management
-- `GET /api/responders` - List active responders
-- `PUT /api/responders/:id/status` - Update responder status
-- `GET /api/responders/nearest` - Find nearest responder stations
-
-### SMS & Notifications
-- `POST /api/sms/send-alert` - Trigger SMS alert to geofenced users
-- `POST /api/sos` - Emergency SOS request
-
-### Authentication
-- `POST /api/auth/verify` - Verify phone number
-- `POST /api/auth/admin-key` - Admin secure key verification
-
----
-
-## Deployment
-
-### Frontend (Netlify)
-```bash
-# Automatic deployment from GitHub
-# Push to main → Netlify builds and deploys automatically
-```
-
-**Live:** https://rescuenet-ai.netlify.app
-
-### Backend (Render / Railway / Heroku)
-```bash
-# Set environment variables in hosting platform
-# Deploy from GitHub repository
-```
-
----
-
-## Performance Optimizations
-
-- **Vite:** Sub-1-second HMR for development, optimized code splitting
-- **Leaflet Clustering:** Handles 1000+ incident markers efficiently
-- **Firebase Realtime:** Direct WebSocket connection for instant updates
-- **Cloudinary CDN:** Auto-optimized media delivery globally
-- **Rate Limiting:** Express Rate Limit prevents API abuse
-- **Lazy Component Loading:** React.lazy() for route-based code splitting
-
----
-
-## Security Considerations
-
-✅ **Implemented**
-- Auth0 OAuth 2.0 for civilian authentication
-- Firebase security rules for Firestore access control
-- Phone number verification for account confirmation
-- Admin hardware key secondary authentication
-- Rate limiting on critical endpoints
-- CORS configuration for origin validation
-- Environment variable secrets management
-
-⚠️ **Additional Recommendations**
-- Enable HTTPS/TLS for all communications
-- Implement API key rotation policies
-- Add audit logging for admin actions
-- Use Firebase backup/restore for disaster recovery
-- Implement IP whitelisting for admin endpoints
-
----
-
-## Development Workflow
-
-### Available Scripts
-
-**Frontend:**
-```bash
-npm run dev      # Start Vite dev server
-npm run build    # Production build
-npm run preview  # Preview production build locally
-npm run lint     # ESLint code quality checks
-```
-
-**Backend:**
-```bash
-npm run dev      # Start with Nodemon auto-reload
-npm start        # Start production server
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue:** `GEMINI_API_KEY is not configured`
-- **Solution:** Verify `.env` file exists in `/server` with `GEMINI_API_KEY` set
-
-**Issue:** Firebase Anonymous Auth fails (403)
-- **Solution:** Enable Anonymous Sign-In in Firebase Console → Authentication
-
-**Issue:** Twilio SMS not sending
-- **Solution:** Verify Twilio credentials and that the phone number is valid
-
-**Issue:** Leaflet map not displaying
-- **Solution:** Ensure Leaflet CSS is loaded; check for CORS issues with tile provider
-
----
-
-## License
-
-MIT License - See LICENSE file for details
-
----
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## Support
-
-For issues, questions, or feature requests:
-- **GitHub Issues:** [Create an issue](https://github.com/Scorpion950/rescuenet_ai/issues)
-- **Documentation:** Refer to individual component comments in source code
-
----
-
-## 👨‍💻 Development Team
-Developed with ❤️ by the **RescueNet AI Team** for a professional Hackathon presentation.
-
----
-
-### ⭐ Show your support!
-If you find this project useful for disaster response or learning, please give it a star on GitHub! 🌟
+The selected Anthropic `frontend-design` skill is included at `.agents/skills/frontend-design/SKILL.md` along with its license, and referenced by `AGENTS.md` so future coding assistants can use it without installing any global skill.

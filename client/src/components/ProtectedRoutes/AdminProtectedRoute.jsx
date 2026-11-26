@@ -1,15 +1,8 @@
 import { Navigate } from "react-router-dom";
+import useFirebaseRole from "../../hooks/useFirebaseRole";
 
-function AdminProtectedRoute({ children }) {
-
-    const isAdmin = sessionStorage.getItem("isAdmin") === "true";
-
-    if (!isAdmin) {
-        return <Navigate to="/admin-access" replace />;
-    }
-
-    return children;
-
+export default function AdminProtectedRoute({ children }) {
+  const { loading, role } = useFirebaseRole();
+  if (loading) return <div className="session-state">Checking admin permissions…</div>;
+  return role === "admin" ? children : <Navigate to="/admin-access" replace />;
 }
-
-export default AdminProtectedRoute;

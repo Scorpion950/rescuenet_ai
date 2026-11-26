@@ -1,85 +1,72 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, Link } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
+import { signOut } from "firebase/auth";
+import { Activity, ArrowUpRight, LogOut, Menu, X } from "lucide-react";
+import { auth } from "../firebase";
+import NotificationCenter from "./NotificationCenter";
 
-function Navbar() {
+const links = [
+  { to: "/", label: "Overview", end: true },
+  { to: "/livemap", label: "Live map" },
+  { to: "/report", label: "Report incident" },
+  { to: "/sos", label: "Emergency SOS", emergency: true },
+];
 
-    const { isAuthenticated, isLoading, loginWithRedirect, logout, user } = useAuth0();
-
-    return (
-
-        <nav className="bg-slate-950/90 backdrop-blur-md text-white px-6 py-4 shadow-lg border-b border-white/5 sticky top-0 z-50">
-
-            <div className="flex flex-wrap justify-between items-center gap-4">
-
-                {/* Logo */}
-                <Link
-                    to="/"
-                    className="flex items-center gap-3 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-500"
-                >
-                    <img src="/logo.png" alt="RescueNet AI Logo" className="w-10 h-10 object-contain drop-shadow-lg" />
-                    RescueNet AI
-                </Link>
-
-                {/* Navigation Links */}
-                <div className="flex items-center gap-4 flex-wrap">
-
-                    <Link to="/" className="hover:text-red-400 transition font-medium">
-                        Home
-                    </Link>
-
-                    <Link to="/report" className="hover:text-red-400 transition font-medium">
-                        Report
-                    </Link>
-
-                    <Link to="/livemap" className="hover:text-red-400 transition font-medium">
-                        Live Map
-                    </Link>
-
-                    <Link to="/sos" className="hover:text-red-400 transition font-medium">
-                        SOS
-                    </Link>
-
-                    {/* Auth0 Login / User Profile */}
-                    {isLoading ? (
-                        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    ) : isAuthenticated ? (
-                        <div className="flex items-center gap-3">
-                            {/* User avatar */}
-                            {user?.picture && (
-                                <img
-                                    src={user.picture}
-                                    alt={user.name}
-                                    title={user.name}
-                                    className="w-9 h-9 rounded-full ring-2 ring-blue-500/60 hover:ring-blue-400 transition cursor-pointer"
-                                />
-                            )}
-                            {/* Logout */}
-                            <button
-                                onClick={() =>
-                                    logout({ logoutParams: { returnTo: window.location.origin } })
-                                }
-                                className="bg-slate-800 hover:bg-slate-700 border border-white/10 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all"
-                            >
-                                Logout
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => loginWithRedirect()}
-                            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 px-5 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-900/40 transition-all"
-                        >
-                            Login
-                        </button>
-                    )}
-
-                </div>
-
-            </div>
-
+export default function Navbar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { isAuthenticated, isLoading, loginWithRedirect, logout, user } = useAuth0();
+  const handleLogout = async () => {
+    await signOut(auth);
+    logout({ logoutParams: { returnTo: window.location.origin } });
+  };
+  return (
+    <header className="site-header">
+      <div className="header-inner">
+        <Link to="/" className="brand" aria-label="RescueNet AI home" onClick={() => setMobileOpen(false)}>
+          <span className="brand-mark"><Activity size={22} strokeWidth={2.4} /></span>
+          <span>RescueNet<span className="brand-ai">AI</span></span>
+        </Link>
+        <div className="header-links">
+          <nav className="desktop-nav" aria-label="Main navigation">
+            {links.map((link) => (
+              <NavLink key={link.to} to={link.to} end={link.end}
+                className={({ isActive }) => [
+                  "nav-link", isActive ? "is-active" : "", link.emergency ? "nav-emergency" : "",
+                ].join(" ")}>
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+          <span className="header-divider" aria-hidden="true" />
+          {!isLoading && isAuthenticated && <NotificationCenter />}
+          {!isLoading && (isAuthenticated ? (
+            <button className="header-account" title={"Signed in as " + (user?.name || "civilian")}
+              onClick={handleLogout}>
+              <LogOut size={17} /><span>Log out</span>
+            </button>
+          ) : (
+            <button className="header-account sign-in" onClick={() => loginWithRedirect()}>
+              Sign in <ArrowUpRight size={16} />
+            </button>
+          ))}
+          <button className="mobile-menu-button" aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </div>
+      {mobileOpen && (
+        <nav className="mobile-nav" aria-label="Mobile navigation">
+          {links.map((link) => (
+            <NavLink key={link.to} end={link.end} to={link.to}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => "mobile-nav-link " + (isActive ? "is-active" : "")}>
+              {link.label}
+            </NavLink>
+          ))}
         </nav>
-
-    );
-
+      )}
+    </header>
+  );
 }
-
-export default Navbar;

@@ -1,176 +1,63 @@
+const crypto = require("node:crypto");
+const db = require("../config/firebase");
+const { findNearbyStations } = require("../services/stationLookup");
+const { normalizeDepartments } = require("../utils/departments");
+const { isValidCoordinates, cleanText } = require("../utils/validation");
 
-const calculateDistance = require(
-    "../utils/distanceCalculator"
-);
+async function sendSOS(req, res) {
+  const services = normalizeDepartments(req.body.services);
+  const { latitude, longitude } = req.body;
+  if (!services.length || !isValidCoordinates(latitude, longitude)) {
+    return res.status(400).json({ error: "Select a service and provide valid coordinates." });
+  }
+  const requestKey = cleanText(req.body.requestKey, 100);
+  if (!/^[A-Za-z0-9_-]{8,100}$/.test(requestKey)) {
+    return res.status(400).json({ error: "A unique request key is required." });
+  }
 
-const findNearestStations =
-    require("../utils/findNearestStations");
+  try {
+    const key = crypto.createHash("sha256")
+      .update(req.auth.uid + ":" + requestKey).digest("hex").slice(0, 40);
+    const ref = db.collection("sosAlerts").doc(key);
+    const existing = await ref.get();
+    if (existing.exists) {
+      return res.json({
+        success: true, alertId: key, duplicate: true,
+        status: existing.data().status,
+        suggestedStations: existing.data().suggestedStations || [],
+      });
+    }
 
-const db = require(
-    "../config/firebase"
-);
-
-const sendSOS = async (req, res) => {
-
-    try {
-
-        const {
-
-            services,
-            latitude,
-            longitude,
-            location,
-
-        } = req.body;
-
-
-        if (
-
-            !services ||
-
-            !Array.isArray(services) ||
-
-            services.length === 0
-
-        ) {
-
-            return res.status(400).json({
-
-                error:
-                    "At least one emergency service is required."
-
-            });
-
-        }
-
-        const sosSnapshot =
-            await db
-                .collection("sosAlerts")
-                .get();
-
-        const now = Date.now();
-
-        let blocked = false;
-
-        for (const doc of sosSnapshot.docs) {
-
-            const sos = doc.data();
-
-            // Skip invalid coordinates
-            if (
-                !sos.latitude ||
-                !sos.longitude
-            ) {
-                continue;
-            }
-
-            // Distance calculation
-            const distance =
-                calculateDistance(
-
-                    latitude,
-                    longitude,
-
-                    sos.latitude,
-                    sos.longitude
-
-                );
-
-            // Timestamp handling
-            const createdAt =
-                sos.createdAt?._seconds
-                    ? sos.createdAt._seconds * 1000
-                    : new Date(
-                        sos.createdAt
-                    ).getTime();
-
-            // 5 minute cooldown
-            const FIVE_MINUTES =
-                5 * 60 * 1000;
-
-            const recent =
-                now - createdAt
-                < FIVE_MINUTES;
-
-            // Block nearby spam
-            if (
-                distance <= 1 &&
-                recent
-            ) {
-
-                blocked = true;
-
-                break;
-
-            }
-
-        }
-
-        // Reject duplicate area SOS
-        if (blocked) {
-
-            return res.status(400).json({
-
-                error:
-                    "SOS already triggered in this area recently.",
-
-            });
-
-        }
-
-        // Find nearest responder stations
-        const nearestStations =
-
-            findNearestStations(
-
-                services,
-                latitude,
-                longitude
-
-            );
-
-        // Save SOS
-        await db.collection("sosAlerts").add({
-
-            services,
-            assignedStations:
-                nearestStations,
-            latitude,
-            longitude,
-            location,
-            createdAt: new Date(),
-
-
-        });
-
-        res.json({
-
-            success: true,
-
-            message:
-
-                `${services.join(", ")} Alert Sent Successfully!`,
-
-            assignedStations:
-                nearestStations,
-
-        });
-
-    }catch (error) {
-
-    console.error("SOS ERROR:", error);
-
-    res.status(500).json({
-
-        error:
-            "Failed to send SOS",
-
+    const lookup = await findNearbyStations(services, latitude, longitude);
+    const payload = {
+      services,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      location: cleanText(req.body.location, 160) || "GPS location",
+      createdBy: req.auth.uid,
+      status: "PENDING",
+      dispatchStatus: "DEMO_ONLY",
+      suggestedStations: lookup.stations,
+      stationSource: lookup.source,
+      createdAt: db.admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+    };
+    try { await ref.create(payload); } catch (error) {
+      if (error.code !== 6 && error.code !== "already-exists") throw error;
+    }
+    res.status(201).json({
+      success: true,
+      alertId: key,
+      status: "PENDING",
+      suggestedStations: lookup.stations,
+      assignedStations: lookup.stations,
+      dispatchStatus: "DEMO_ONLY",
+      message: "SOS saved in RescueNet demo. No emergency service has been contacted.",
     });
-
+  } catch (error) {
+    console.error("SOS creation failed:", error);
+    res.status(500).json({ error: "Could not save SOS. Retry or contact emergency services directly." });
+  }
 }
 
-};
-
-module.exports = {
-    sendSOS,
-};
+module.exports = { sendSOS };

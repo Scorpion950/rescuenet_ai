@@ -4,17 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/checkDependencies.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/checkDependencies.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.3.1",
-    "@google/generative-ai": "^0.24.1",
     "@tailwindcss/vite": "^4.3.0",
     "firebase": "^12.13.0",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.81.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-hot-toast": "^2.6.0",

@@ -17,6 +17,7 @@ const {
 const {
 
     updateIncidentStatus,
+    archiveSOS,
 
 } = require(
 
@@ -34,5 +35,7 @@ router.post(
     updateIncidentStatus
 
 );
+
+router.delete("/sos/:id", adminAuth, archiveSOS);
 
 module.exports = router;

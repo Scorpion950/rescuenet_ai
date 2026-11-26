@@ -1,294 +1,61 @@
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-} from "react-router-dom";
-
-/* USER LAYOUT */
-import UserLayout from
-  "./layouts/UserLayout";
-
-/* ADMIN LAYOUT */
-import AdminLayout from
-  "./layouts/AdminLayout";
-
-/* RESPONDER LAYOUT */
-import ResponderLayout from
-  "./layouts/ResponderLayout";
-
-/* PROTECTED ROUTES */
-import AdminProtectedRoute from
-  "./components/ProtectedRoutes/AdminProtectedRoute";
-
-import UserProtectedRoute from
-  "./components/ProtectedRoutes/UserProtectedRoute";
-
-import ResponderProtectedRoute from
-  "./components/ProtectedRoutes/ResponderProtectedRoute";
-
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import UserLayout from "./layouts/UserLayout";
+import AdminLayout from "./layouts/AdminLayout";
+import ResponderLayout from "./layouts/ResponderLayout";
+import AdminProtectedRoute from "./components/ProtectedRoutes/AdminProtectedRoute";
+import UserProtectedRoute from "./components/ProtectedRoutes/UserProtectedRoute";
+import ResponderProtectedRoute from "./components/ProtectedRoutes/ResponderProtectedRoute";
 import { LocationProvider } from "./context/LocationContext";
 
-/* USER PAGES */
-import Home from
-  "./pages/Home";
+// Keep the map and operations bundles off the initial public home load.
+const Home = lazy(() => import("./pages/Home"));
+const Report = lazy(() => import("./pages/Report"));
+const SOS = lazy(() => import("./pages/SOS"));
+const LiveMap = lazy(() => import("./pages/LiveMap"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const ResponderLogin = lazy(() => import("./pages/ResponderLogin"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
+const AdminMap = lazy(() => import("./pages/admin/AdminMap"));
+const AdminSOS = lazy(() => import("./pages/admin/AdminSOS"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
+const PoliceDashboard = lazy(() => import("./pages/responder/PoliceDashboard"));
+const AmbulanceDashboard = lazy(() => import("./pages/responder/AmbulanceDashboard"));
+const FireDashboard = lazy(() => import("./pages/responder/FireDashboard"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
-import Report from
-  "./pages/Report";
-
-import LiveMap from
-  "./pages/LiveMap";
-
-import SOS from
-  "./pages/SOS";
-
-/* ADMIN LOGIN */
-import AdminLogin from
-  "./pages/AdminLogin";
-
-/* RESPONDER LOGIN */
-import ResponderLogin from
-  "./pages/ResponderLogin";
-
-/* ADMIN PAGES */
-import AdminOverview from
-  "./pages/admin/AdminOverview";
-
-import AdminMap from
-  "./pages/admin/AdminMap";
-
-import AdminSOS from
-  "./pages/admin/AdminSOS";
-
-import AdminReports from
-  "./pages/admin/AdminReports";
-
-/* RESPONDER PAGES */
-import PoliceDashboard from
-  "./pages/responder/PoliceDashboard";
-
-import AmbulanceDashboard from
-  "./pages/responder/AmbulanceDashboard";
-
-import FireDashboard from
-  "./pages/responder/FireDashboard";
-
-import NotFound from "./pages/NotFound";
-
-function App() {
-
+export default function App() {
   return (
-
     <BrowserRouter>
       <LocationProvider>
-        <Routes>
-
-          {/* USER ROUTES */}
-          <Route
-            element={<UserLayout />}
-          >
-
-            <Route
-              path="/"
-              element={<Home />}
-            />
-
-            <Route
-              path="/report"
-              element={
-                <UserProtectedRoute>
-                  <Report />
-                </UserProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/livemap"
-              element={<LiveMap />}
-            />
-
-            <Route
-              path="/sos"
-              element={
-                <UserProtectedRoute>
-                  <SOS />
-                </UserProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/admin-access"
-              element={<AdminLogin />}
-            />
-
-          </Route>
-
-          {/* ADMIN ROUTES */}
-          <Route
-            element={<AdminLayout />}
-          >
-
-            {/* Overview */}
-            <Route
-
-              path="/admin"
-
-              element={
-
-                <AdminProtectedRoute>
-
-                  <AdminOverview />
-
-                </AdminProtectedRoute>
-
-              }
-
-            />
-
-            {/* Admin Map */}
-            <Route
-
-              path="/admin/map"
-
-              element={
-
-                <AdminProtectedRoute>
-
-                  <AdminMap />
-
-                </AdminProtectedRoute>
-
-              }
-
-            />
-
-            {/* SOS */}
-            <Route
-
-              path="/admin/sos"
-
-              element={
-
-                <AdminProtectedRoute>
-
-                  <AdminSOS />
-
-                </AdminProtectedRoute>
-
-              }
-
-            />
-
-            {/* Reports */}
-            <Route
-
-              path="/admin/reports"
-
-              element={
-
-                <AdminProtectedRoute>
-
-                  <AdminReports />
-
-                </AdminProtectedRoute>
-
-              }
-
-            />
-
-          </Route>
-
-          {/* RESPONDER ROUTES */}
-          <Route
-            element={<ResponderLayout />}
-          >
-
-            {/* Responder Login */}
-            <Route
-
-              path="/responder"
-
-              element={<ResponderLogin />}
-
-            />
-
-            {/* Police */}
-            <Route
-
-              path="/responder/police"
-
-              element={
-
-                <ResponderProtectedRoute
-
-                  responderType="Police"
-
-                >
-
-                  <PoliceDashboard />
-
-                </ResponderProtectedRoute>
-
-              }
-
-            />
-
-            {/* Ambulance */}
-            <Route
-
-              path="/responder/ambulance"
-
-              element={
-
-                <ResponderProtectedRoute
-
-                  responderType="Ambulance"
-
-                >
-
-                  <AmbulanceDashboard />
-
-                </ResponderProtectedRoute>
-
-              }
-
-            />
-
-
-            {/* Fire */}
-            <Route
-
-              path="/responder/fire"
-
-              element={
-
-                <ResponderProtectedRoute
-
-                  responderType="Fire Brigade"
-
-                >
-
-                  <FireDashboard />
-
-                </ResponderProtectedRoute>
-
-              }
-
-            />
-
-            {/* Not Found */}
-            <Route
-              path="*"
-              element={<NotFound />}
-            />
-
-          </Route>
-
-        </Routes>
+        <Suspense fallback={<div className="session-state" role="status">Loading RescueNet…</div>}>
+          <Routes>
+            <Route element={<UserLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/livemap" element={<LiveMap />} />
+              <Route path="/report" element={<UserProtectedRoute><Report /></UserProtectedRoute>} />
+              <Route path="/sos" element={<UserProtectedRoute><SOS /></UserProtectedRoute>} />
+              <Route path="/admin-access" element={<AdminLogin />} />
+            </Route>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminProtectedRoute><AdminOverview /></AdminProtectedRoute>} />
+              <Route path="/admin/map" element={<AdminProtectedRoute><AdminMap /></AdminProtectedRoute>} />
+              <Route path="/admin/sos" element={<AdminProtectedRoute><AdminSOS /></AdminProtectedRoute>} />
+              <Route path="/admin/reports" element={<AdminProtectedRoute><AdminReports /></AdminProtectedRoute>} />
+            </Route>
+            <Route element={<ResponderLayout />}>
+              <Route path="/responder" element={<ResponderLogin />} />
+              <Route path="/responder/police" element={<ResponderProtectedRoute responderType="Police">
+                <PoliceDashboard /></ResponderProtectedRoute>} />
+              <Route path="/responder/ambulance" element={<ResponderProtectedRoute responderType="Ambulance">
+                <AmbulanceDashboard /></ResponderProtectedRoute>} />
+              <Route path="/responder/fire" element={<ResponderProtectedRoute responderType="Fire Brigade">
+                <FireDashboard /></ResponderProtectedRoute>} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </LocationProvider>
     </BrowserRouter>
-
   );
-
 }
-
-export default App;

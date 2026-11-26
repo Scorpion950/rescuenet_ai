@@ -1,142 +1,42 @@
-import {
-    Outlet,
-    NavLink,
-    useNavigate,
-} from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { ClipboardList, LayoutDashboard, LogOut, MapPinned, ShieldCheck, Siren } from "lucide-react";
+import { auth } from "../firebase";
 
-function AdminLayout() {
+const LINKS = [
+  { to: "/admin", label: "Overview", Icon: LayoutDashboard, end: true },
+  { to: "/admin/map", label: "Live map", Icon: MapPinned },
+  { to: "/admin/sos", label: "SOS requests", Icon: Siren },
+  { to: "/admin/reports", label: "Incident reports", Icon: ClipboardList },
+];
 
-    const navigate =
-        useNavigate();
-
-    // Logout
-    const logout = () => {
-
-        sessionStorage.removeItem(
-            "isAdmin"
-        );
-
-        navigate(
-            "/admin-access"
-        );
-
-    };
-
-    return (
-
-        <div className="min-h-screen bg-mesh text-white">
-
-            {/* Admin Navbar */}
-            <div className="bg-red-700 px-6 py-4 flex justify-between items-center shadow-lg">
-
-                <h1 className="text-2xl font-bold">
-
-                    RescueNet Admin
-
-                </h1>
-
-                <div className="flex items-center gap-6 text-lg">
-
-                    <NavLink
-
-                        to="/admin"
-
-                        className={({ isActive }) =>
-
-                            isActive
-                                ? "font-bold text-white"
-                                : "text-gray-200 hover:text-white"
-
-                        }
-
-                    >
-
-                        Overview
-
-                    </NavLink>
-
-                    <NavLink
-
-                        to="/admin/map"
-
-                        className={({ isActive }) =>
-
-                            isActive
-                                ? "font-bold text-white"
-                                : "text-gray-200 hover:text-white"
-
-                        }
-
-                    >
-
-                        Live Map
-
-                    </NavLink>
-
-                    <NavLink
-
-                        to="/admin/sos"
-
-                        className={({ isActive }) =>
-
-                            isActive
-                                ? "font-bold text-white"
-                                : "text-gray-200 hover:text-white"
-
-                        }
-
-                    >
-
-                        SOS Alerts
-
-                    </NavLink>
-
-                    <NavLink
-
-                        to="/admin/reports"
-
-                        className={({ isActive }) =>
-
-                            isActive
-                                ? "font-bold text-white"
-                                : "text-gray-200 hover:text-white"
-
-                        }
-
-                    >
-
-                        Reports
-
-                    </NavLink>
-
-                    {/* Logout Button */}
-                    <button
-
-                        onClick={logout}
-
-                        className="bg-red-900 hover:bg-red-950 px-5 py-2 rounded-xl font-bold transition"
-
-                    >
-
-                        Logout
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            {/* Page Content */}
-            <div className="p-6">
-
-                <Outlet />
-
-            </div>
-
+export default function AdminLayout() {
+  const navigate = useNavigate();
+  async function logout() {
+    await signOut(auth);
+    navigate("/admin-access", { replace: true });
+  }
+  return (
+    <div className="portal-shell">
+      <header className="portal-header">
+        <div className="portal-header-inner">
+          <div className="portal-heading"><ShieldCheck size={22} />
+            <span>RescueNet <strong>Operations</strong></span>
+            <span className="portal-badge">ADMIN / DEMO</span>
+          </div>
+          <nav aria-label="Admin navigation" className="portal-nav">
+            {LINKS.map(({ to, label, Icon, end }) =>
+              <NavLink key={to} to={to} end={end}
+                className={({ isActive }) => "portal-nav-link " + (isActive ? "active" : "")}>
+                <Icon size={16} />{label}
+              </NavLink>
+            )}
+          </nav>
+          <button className="portal-logout" onClick={logout}><LogOut size={16} /> Sign out</button>
         </div>
-
-    );
-
+      </header>
+      <div className="portal-demo-notice">Demonstration environment · External emergency services are not automatically contacted.</div>
+      <Outlet />
+    </div>
+  );
 }
-
-export default AdminLayout;

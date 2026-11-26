@@ -1,155 +1,99 @@
-const db =
-    require("../config/firebase");
+const db = require("../config/firebase");
+const { normalizeDepartment } = require("../utils/departments");
 
-/* Get incidents for responder */
-const getResponderIncidents =
+function canAccessDepartment(req, type) {
+  return req.auth.role === "admin" || req.auth.department === type;
+}
 
-    async (req, res) => {
+async function getResponderIncidents(req, res) {
+  const type = normalizeDepartment(req.params.type);
+  if (!type || !canAccessDepartment(req, type)) {
+    return res.status(403).json({ error: "You cannot view this department's requests." });
+  }
+  try {
+    const [sos, distributions] = await Promise.all([
+      db.collection("sosAlerts").where("services", "array-contains", type).limit(100).get(),
+      db.collection("incident_distributions").where("responderType", "==", type)
+        .limit(100).get(),
+    ]);
+    const incidents = [
+      ...sos.docs.map((doc) => ({ id: doc.id, source: "sos", ...doc.data() })),
+      ...distributions.docs.map((doc) => ({ id: doc.id, source: "incident", ...doc.data() })),
+    ].filter((item) => !["RESOLVED", "ARCHIVED", "REJECTED"].includes(item.status));
+    incidents.sort((a, b) => (b.createdAt?.toMillis?.() || 0) -
+      (a.createdAt?.toMillis?.() || 0));
+    res.json({ success: true, incidents });
+  } catch (error) {
+    console.error("Responder queue failed:", error);
+    res.status(500).json({ error: "Could not load responder queue." });
+  }
+}
 
-        try {
+function referenceFor(req) {
+  const source = req.body.source;
+  if (!["sos", "incident"].includes(source)) return null;
+  return db.collection(source === "sos" ? "sosAlerts" : "incident_distributions")
+    .doc(req.params.id);
+}
 
-            const {
-                type,
-            } = req.params;
+async function updateResponderStatus(req, res, status) {
+  const ref = referenceFor(req);
+  if (!ref) return res.status(400).json({ error: "A valid incident source is required." });
+  try {
+    const updated = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { error: "Request not found.", code: 404 };
+      const item = snap.data();
+      const matches = req.body.source === "sos"
+        ? item.services?.includes(req.auth.department)
+        : item.responderType === req.auth.department;
+      if (req.auth.role !== "admin" && !matches) {
+        return { error: "This request is not assigned to your department.", code: 403 };
+      }
+      if (["RESOLVED", "ARCHIVED", "REJECTED"].includes(item.status)) {
+        return { error: "This request is already closed.", code: 409 };
+      }
+      tx.update(ref, {
+        status,
+        updatedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+        ...(status === "DEPLOYED" ? {
+          acknowledgedBy: db.admin.firestore.FieldValue.arrayUnion(req.auth.uid),
+          deployedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+        } : {
+          resolvedBy: req.auth.uid,
+          resolvedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+        }),
+      });
+      return { reportId: item.reportId || null };
+    });
+    if (updated.error) return res.status(updated.code).json({ error: updated.error });
 
-            const incidents = [];
-
-            // Fetch SOS alerts for this responder type
-            const sosSnapshot =
-
-                await db
-                    .collection("sosAlerts")
-                    .get();
-
-            sosSnapshot.forEach((doc) => {
-
-                const data =
-                    doc.data();
-
-                // Match responder type
-                if (
-
-                    data.services?.includes(type)
-
-                ) {
-
-                    incidents.push({
-
-                        id: doc.id,
-                        source: "sos",
-                        ...data,
-
-                    });
-
-                }
-
-            });
-
-            // Fetch distributed incidents for this responder type
-            try {
-                const distSnapshot = await db
-                    .collection("incident_distributions")
-                    .where("responderType", "==", type)
-                    .get();
-
-                distSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    
-                    // Only include pending distributions
-                    if (data.status !== "RESOLVED") {
-                        incidents.push({
-                            id: doc.id,
-                            source: "incident",
-                            reportId: data.reportId,
-                            ...data,
-                        });
-                    }
-                });
-            } catch (distError) {
-                console.error("Error fetching distributed incidents:", distError);
-                // Continue anyway, at least serve SOS alerts
-            }
-
-            res.json({
-
-                success: true,
-
-                incidents,
-
-            });
-
-        }
-
-        catch (error) {
-
-            console.error(error);
-
-            res.status(500).json({
-
-                error:
-                    "Failed to fetch responder incidents",
-
-            });
-
-        }
-
-    };
-
-/* Deploy Incident */
-const deployIncident = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { source } = req.body;
-        
-        const collectionName = source === "incident" ? "incident_distributions" : "sosAlerts";
-
-        await db.collection(collectionName).doc(id).update({
-            status: "DEPLOYED",
-        });
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Deployment failed" });
-    }
-};
-
-/* Resolve Incident */
-const resolveIncident = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { source } = req.body;
-        
-        const collectionName = source === "incident" ? "incident_distributions" : "sosAlerts";
-
-        await db.collection(collectionName).doc(id).update({
+    if (status === "RESOLVED" && updated.reportId) {
+      const distributions = await db.collection("incident_distributions")
+        .where("reportId", "==", updated.reportId).get();
+      const allResolved = distributions.docs.every((item) =>
+        item.id === req.params.id || item.data().status === "RESOLVED"
+      );
+      if (allResolved) {
+        const reportRef = db.collection("reports").doc(updated.reportId);
+        const currentReport = await reportRef.get();
+        if (currentReport.exists &&
+            !["ARCHIVED", "REJECTED"].includes(currentReport.data().status)) {
+          await reportRef.update({
             status: "RESOLVED",
-        });
-
-        // Also update the original report status if it's an incident distribution
-        if (source === "incident") {
-            const distDoc = await db.collection("incident_distributions").doc(id).get();
-            if (distDoc.exists) {
-                const reportId = distDoc.data().reportId;
-                if (reportId) {
-                    await db.collection("reports").doc(reportId).update({
-                        status: "RESOLVED"
-                    });
-                }
-            }
+            resolvedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: db.admin.firestore.FieldValue.serverTimestamp(),
+          });
         }
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Resolve failed" });
+      }
     }
-};
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error("Responder status update failed:", error);
+    res.status(500).json({ error: "Could not update request." });
+  }
+}
 
-module.exports = {
-
-    getResponderIncidents,
-    deployIncident,
-    resolveIncident,
-
-};
+const deployIncident = (req, res) => updateResponderStatus(req, res, "DEPLOYED");
+const resolveIncident = (req, res) => updateResponderStatus(req, res, "RESOLVED");
+module.exports = { getResponderIncidents, deployIncident, resolveIncident };
