@@ -5,6 +5,7 @@ import { signOut } from "firebase/auth";
 import { Activity, ArrowUpRight, LogOut, Menu, X } from "lucide-react";
 import { auth } from "../firebase";
 import NotificationCenter from "./NotificationCenter";
+import { rememberDestination } from "../utils/authNavigation";
 
 const links = [
   { to: "/", label: "Overview", end: true },
@@ -15,6 +16,7 @@ const links = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const { isAuthenticated, isLoading, loginWithRedirect, logout, user } = useAuth0();
   const handleLogout = async () => {
     await signOut(auth);
@@ -22,6 +24,7 @@ export default function Navbar() {
   };
   return (
     <header className="site-header">
+      {loginError && <div role="alert" className="auth-nav-error">{loginError}</div>}
       <div className="header-inner">
         <Link to="/" className="brand" aria-label="RescueNet AI home" onClick={() => setMobileOpen(false)}>
           <span className="brand-mark"><Activity size={22} strokeWidth={2.4} /></span>
@@ -46,7 +49,14 @@ export default function Navbar() {
               <LogOut size={17} /><span>Log out</span>
             </button>
           ) : (
-            <button className="header-account sign-in" onClick={() => loginWithRedirect()}>
+            <button className="header-account sign-in" onClick={() => {
+              setLoginError("");
+              const returnTo = rememberDestination("/report");
+              loginWithRedirect({ appState: { returnTo } }).catch((error) => {
+                console.error("Could not start Auth0 login:", error);
+                setLoginError(error.message || "Sign-in could not start. Please try again.");
+              });
+            }}>
               Sign in <ArrowUpRight size={16} />
             </button>
           ))}

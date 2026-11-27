@@ -44,8 +44,11 @@ Requires a maintained Node.js release (Node 22+ recommended), a Firebase project
 
 4. **Auth0**:
    - Create an SPA application. Add `http://localhost:5173` as an allowed callback/logout/web origin, along with your eventual HTTPS frontend domain.
+   - **Important for older RescueNet tenants:** the application shown as **Generic** in Auth0 is not the intended client type for this React SPA. Open the application settings, ensure its **Application Type** is **Single Page Application**, and use its Client ID in `VITE_AUTH0_CLIENT_ID` (not the separate administrator app). Do not use a Client Secret in Vite.
+   - On the deployed Vercel frontend `https://rescuenet-ai.vercel.app`, set **Allowed Callback URLs**, **Allowed Logout URLs** and **Allowed Web Origins** to include `https://rescuenet-ai.vercel.app` (and add `http://localhost:5173` for local development). The redirect URI intentionally uses the origin; the client restores `/report` or `/sos` using verified relative paths after Auth0 completes.
    - Create a custom API with an audience (identifier) that matches both `AUTH0_AUDIENCE` on the server and `VITE_AUTH0_AUDIENCE` on the client. Access tokens are verified against Auth0's RS256 JWKS before Firebase custom tokens are minted.
    - Match `AUTH0_DOMAIN` and `VITE_AUTH0_DOMAIN`.
+   - If the site still returns to the homepage displaying **Sign in**, check the inline authentication error banner, inspect the URL for `error=` and confirm the SPA application settings above. If the site displays **Log out** but `/report` shows a session error, inspect `/auth/firebase-token` in Network and the backend's `AUTH0_AUDIENCE` / Firebase Admin configuration. Never paste JWTs or Firebase credentials into support requests.
    - After authorization, civilian users sign into Firebase via the token-exchange endpoint. They must **opt in again** to any location alerts; old phone number collection does not imply permission.
 
 5. **Operations accounts**: create distinct Firebase Email/Password users in the Firebase console, then grant role claims using the trusted server environment:

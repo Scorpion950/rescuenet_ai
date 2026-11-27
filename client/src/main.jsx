@@ -10,6 +10,7 @@ import "./portals.css";
 import "leaflet/dist/leaflet.css";
 import { Toaster } from "react-hot-toast";
 import { CivilianSessionProvider } from "./context/CivilianSessionContext";
+import { consumeDestination } from "./utils/authNavigation";
 
 import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -33,7 +34,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       domain={domain}
       clientId={clientId}
       onRedirectCallback={(appState) => {
-        const destination = appState?.returnTo || window.location.pathname;
+        const destination = consumeDestination(appState);
         window.history.replaceState({}, document.title, destination);
         window.dispatchEvent(new PopStateEvent("popstate"));
       }}

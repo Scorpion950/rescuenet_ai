@@ -29,13 +29,13 @@ export function CivilianSessionProvider({ children }) {
           method: "POST",
           headers: { Authorization: "Bearer " + accessToken },
         });
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.firebaseToken) {
           throw new Error(result.error || "Could not verify your account.");
         }
         await signInWithCustomToken(auth, result.firebaseToken);
         const firebaseToken = await auth.currentUser.getIdToken();
-        await fetch(API_BASE_URL + "/profile", {
+        const profileResponse = await fetch(API_BASE_URL + "/profile", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -43,6 +43,10 @@ export function CivilianSessionProvider({ children }) {
           },
           body: JSON.stringify({ name: user.name || "", email: user.email || "" }),
         });
+        if (!profileResponse.ok) {
+          const profileError = await profileResponse.json().catch(() => ({}));
+          throw new Error(profileError.error || "Your profile could not be loaded. Try again.");
+        }
         if (!cancelled) setSession({ ready: true, loading: false, error: null });
       } catch (error) {
         if (!cancelled) setSession({ ready: false, loading: false, error: error.message });
@@ -54,7 +58,8 @@ export function CivilianSessionProvider({ children }) {
 
   return (
     <CivilianSessionContext.Provider value={{
-      ...(!isAuthenticated ? { ready: false, loading: isLoading, error: null } : session),
+      ...(!isAuthenticated ? { ready: false, loading: isLoading, error: null } :
+        !user?.sub ? { ready: false, loading: isLoading, error: "Your Auth0 profile has no user identifier." } : session),
       isAuthenticated, isLoading, user,
     }}>
       {children}

@@ -9,6 +9,7 @@
     "prebuild": "node scripts/checkDependencies.mjs",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test tests/*.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

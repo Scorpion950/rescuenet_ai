@@ -2,17 +2,36 @@ import { useEffect, useRef } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { ShieldAlert, LoaderCircle } from "lucide-react";
 import { useCivilianSession } from "../../context/CivilianSessionContext";
+import { rememberDestination } from "../../utils/authNavigation";
 
 function UserProtectedRoute({ children }) {
-  const { isLoading, isAuthenticated, loginWithRedirect } = useAuth0();
+  const { isLoading, isAuthenticated, loginWithRedirect, error: authError } = useAuth0();
   const session = useCivilianSession();
   const redirecting = useRef(false);
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !redirecting.current) {
+    if (!isLoading && !isAuthenticated && !authError && !redirecting.current) {
       redirecting.current = true;
-      loginWithRedirect({ appState: { returnTo: window.location.pathname } });
+      const returnTo = rememberDestination(window.location.pathname + window.location.search);
+      loginWithRedirect({ appState: { returnTo } }).catch((error) => {
+        redirecting.current = false;
+        console.error("Could not start Auth0 login:", error);
+      });
     }
-  }, [isLoading, isAuthenticated, loginWithRedirect]);
+  }, [isLoading, isAuthenticated, authError, loginWithRedirect]);
+
+  if (!isAuthenticated && !isLoading && authError) {
+    return (
+      <div className="session-state" role="alert">
+        <ShieldAlert size={32} />
+        <h2>Sign-in did not finish</h2>
+        <p>{authError.message || "Your identity provider could not complete sign-in."}</p>
+        <button className="button button-primary" onClick={() => {
+          const returnTo = rememberDestination(window.location.pathname);
+          loginWithRedirect({ appState: { returnTo } });
+        }}>Try signing in again</button>
+      </div>
+    );
+  }
 
   if (isLoading || session.loading || !isAuthenticated) {
     return (

@@ -1,11 +1,13 @@
 import { Outlet, Link } from "react-router-dom";
 import { Activity } from "lucide-react";
 import Navbar from "../components/Navbar";
+import AuthStatusNotice from "../components/AuthStatusNotice";
 
 export default function UserLayout() {
   return (
     <div className="site-shell">
       <Navbar />
+      <AuthStatusNotice />
       <Outlet />
       <footer className="site-footer">
         <div className="content-width footer-inner">

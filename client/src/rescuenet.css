@@ -194,3 +194,25 @@ textarea:focus-visible, select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+/* Authentication failures are surfaced even when Auth0 returns to the homepage. */
+.auth-notice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  margin-top: 20px;
+  border: 1px solid #e9b8b8;
+  border-radius: 14px;
+  background: #fff4f3;
+  color: #812b2b;
+}
+.auth-notice > svg { flex: 0 0 auto; }
+.auth-notice > div { flex: 1; }
+.auth-notice strong { display: block; margin-bottom: 4px; }
+.auth-notice p { margin: 4px 0; line-height: 1.5; }
+.auth-notice .button { flex: 0 0 auto; }
+.auth-nav-error { padding: 12px 24px; background: #fff4f3; color: #812b2b; text-align: center; }
+@media (max-width: 640px) {
+  .auth-notice { flex-direction: column; align-items: flex-start; }
+  .auth-notice .button { width: 100%; justify-content: center; }
+}
